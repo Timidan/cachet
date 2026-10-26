@@ -5,12 +5,7 @@ export function Stamp({ zats, network }: { zats: number; network: Network }) {
   return (
     <div className="stamp grid h-[96px] w-[78px] place-items-center bg-paper p-[7px]" aria-hidden>
       <div className="flex h-full w-full flex-col items-center justify-between border border-ink/40 px-1 pb-1 pt-1.5 text-ink">
-        <svg viewBox="0 0 40 34" className="h-[34px] w-[40px]" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round">
-          <path d="M20 33V17M20 23l-5-4M20 20l6-5" />
-          <path d="M8 18c-4-1-5-7 0-9 0-5 6-7 9-4 3-4 9-3 10 1 5-1 8 4 5 8 3 3 0 8-4 7-2 3-8 3-10 0-3 2-8 1-10-3Z" />
-          <path d="M13 12c2 1 4 1 6-1M22 9c2 2 5 2 7 1M11 16c3 1 6 0 8-2" strokeWidth=".8" />
-          <path d="M4 33h32" strokeWidth=".8" />
-        </svg>
+        <img src="/art/ironwood.png" alt="" className="h-[42px] w-[42px] object-contain" draggable={false} />
         <span className="type text-[10.5px] font-bold leading-none">{zec(zats)}</span>
         <span className="sc text-[8.5px] leading-none tracking-[.08em]">{network === "main" ? "Ironwood" : `Ironwood · ${network}`}</span>
       </div>
