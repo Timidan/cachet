@@ -1,0 +1,39 @@
+# Regtest node; shape copied from zingolabs/infrastructure zcash_local_net (NU6.3 = Ironwood, NU7 off).
+[network]
+network = "Regtest"
+listen_addr = "127.0.0.1:18344"
+initial_mainnet_peers = []
+initial_testnet_peers = []
+cache_dir = false
+
+[rpc]
+listen_addr = "127.0.0.1:18232"
+enable_cookie_auth = false
+cookie_dir = "/home/timidan/Desktop/zecathon/regtest/zebra-state"
+
+[state]
+cache_dir = "/home/timidan/Desktop/zecathon/regtest/zebra-state"
+ephemeral = false
+
+[mining]
+miner_address = "tmMPcYyVf6nuhXUzQfLM6dN7MxZKBJNzNAr"
+
+[network.testnet_parameters.activation_heights]
+Canopy = 1
+NU5 = 2
+NU6 = 2
+"NU6.1" = 5
+"NU6.2" = 5
+"NU6.3" = 5
+
+[[network.testnet_parameters.lockbox_disbursements]]
+address = "t2RnBRiqrN1nW4ecZs1Fj3WWjNdnSs4kiX8"
+amount = 1
+
+[network.testnet_parameters.post_nu6_funding_streams.height_range]
+start = 2
+end = 1000000
+
+[[network.testnet_parameters.post_nu6_funding_streams.recipients]]
+receiver = "Deferred"
+numerator = 1

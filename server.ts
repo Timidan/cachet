@@ -1,0 +1,221 @@
+// Cachet: pay anyone with a sealed link. One Bun process: the JSON API, the built web app and the payout worker.
+import { Database } from "bun:sqlite";
+import { mkdirSync } from "node:fs";
+import { timingSafeEqual } from "node:crypto";
+import { resolve } from "node:path";
+import * as wallet from "./lib/devtool";
+import { looksLikeAddress, refusal, NETWORKS, type Network } from "./lib/address";
+
+const NETWORK = (process.env.NETWORK ?? "regtest") as Network;
+if (!(NETWORK in NETWORKS)) throw new Error(`NETWORK must be one of ${Object.keys(NETWORKS).join(", ")}`);
+const DATA_DIR = process.env.DATA_DIR ?? "data";
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN ?? "";
+const PUBLIC_URL = (process.env.PUBLIC_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
+const PUBLIC_DIR = resolve(import.meta.dir, "web/dist");
+const TICK_MS = Number(process.env.TICK_MS ?? 4_000);
+const MIN_ZATS = 5_000; // ZIP-317 marginal fee: a smaller note costs the recipient more to spend than it holds
+const MEMO_BYTES = 512;
+
+mkdirSync(DATA_DIR, { recursive: true });
+const db = new Database(`${DATA_DIR}/cachet.sqlite`, { create: true });
+db.exec("PRAGMA journal_mode = WAL");
+db.exec(`
+CREATE TABLE IF NOT EXISTS batches (
+  id INTEGER PRIMARY KEY, label TEXT NOT NULL, sender TEXT NOT NULL, note TEXT NOT NULL,
+  zats INTEGER NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS links (
+  id INTEGER PRIMARY KEY, batch_id INTEGER NOT NULL REFERENCES batches(id),
+  token_hash TEXT NOT NULL UNIQUE,         -- the link itself is never stored
+  status TEXT NOT NULL DEFAULT 'sealed',   -- sealed → queued → sent → delivered, or expired
+  address TEXT,                            -- held only from claim until the payout is mined
+  txid TEXT, height INTEGER, error TEXT, claimed_at INTEGER, sent_at INTEGER, delivered_at INTEGER);
+`);
+
+type Link = {
+  id: number; status: string; txid: string | null; height: number | null; error: string | null;
+  delivered_at: number | null; sender: string; note: string; zats: number; expires_at: number;
+};
+const linkByToken = db.query<Link, [string]>(
+  `SELECT links.id, status, txid, height, error, delivered_at, sender, note, zats, expires_at
+   FROM links JOIN batches ON batches.id = links.batch_id WHERE token_hash = ?`,
+);
+
+// Read back from SQLite itself: bun:sqlite's run() only returns these from Bun 1.1.14 on.
+const changes = () => db.query<{ n: number }, []>("SELECT changes() AS n").get()!.n;
+const lastId = () => db.query<{ id: number }, []>("SELECT last_insert_rowid() AS id").get()!.id;
+
+const hash = (token: string) => new Bun.CryptoHasher("sha256").update(token).digest("hex");
+const newToken = () => Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64url");
+const memo = (sender: string, note: string) => (note ? `${note} — ${sender}` : `From ${sender}`);
+const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
+const expired = (status: string, expiresAt: number) => status === "sealed" && Date.now() > expiresAt;
+const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+
+const HEADERS = { "referrer-policy": "no-referrer", "x-content-type-options": "nosniff" };
+const json = (body: unknown, status = 200) =>
+  Response.json(body, { status, headers: { ...HEADERS, "cache-control": "no-store" } });
+const fail = (status: number, error: string) => json({ error }, status);
+
+function view(l: Link) {
+  const status = expired(l.status, l.expires_at) ? "expired" : l.status;
+  return {
+    status, sender: l.sender, note: l.note, zats: l.zats, network: NETWORK, expiresAt: l.expires_at,
+    txid: l.txid, height: l.height, deliveredAt: l.delivered_at, error: status === "sealed" ? l.error : null,
+  };
+}
+
+async function claim(token: string, req: Request) {
+  const link = linkByToken.get(hash(token));
+  if (!link) return fail(404, "This link doesn't exist.");
+  if (view(link).status !== "sealed") return json(view(link), 409);
+  const body = await req.json().catch(() => ({}));
+  const address = str(body?.address, 2000);
+  const why = looksLikeAddress(address) ? refusal(await wallet.inspect(address), NETWORK) : "That isn't a Zcash address.";
+  if (why) return fail(422, why);
+  db.run(
+    "UPDATE links SET status = 'queued', address = ?, claimed_at = ?, error = NULL WHERE id = ? AND status = 'sealed'",
+    [address, Date.now(), link.id],
+  );
+  if (!changes()) return fail(409, "This link was just opened by someone else.");
+  void tick();
+  return json(view(linkByToken.get(hash(token))!));
+}
+
+function admin(req: Request) {
+  const got = Buffer.from(req.headers.get("authorization")?.replace(/^Bearer /, "") ?? "");
+  const want = Buffer.from(ADMIN_TOKEN);
+  return ADMIN_TOKEN !== "" && got.length === want.length && timingSafeEqual(got, want);
+}
+
+async function createBatch(req: Request) {
+  const b = await req.json().catch(() => null);
+  const label = str(b?.label, 80), sender = str(b?.sender, 60), note = str(b?.note, 200);
+  const zats = Math.round(Number(b?.zats)), count = Math.round(Number(b?.count)), days = Math.round(Number(b?.days ?? 14));
+  if (!label || !sender) return fail(400, "Give the batch a name and a sender.");
+  if (!(zats >= MIN_ZATS)) return fail(400, `Each link needs at least ${MIN_ZATS} zatoshis (0.00005 ZEC).`);
+  if (!(count >= 1 && count <= 200)) return fail(400, "Make between 1 and 200 links at a time.");
+  if (!(days >= 1 && days <= 90)) return fail(400, "Links can last between 1 and 90 days.");
+  if (Buffer.byteLength(memo(sender, note)) > MEMO_BYTES) return fail(400, "The note is too long for a Zcash memo.");
+  const now = Date.now();
+  const tokens = Array.from({ length: count }, newToken);
+  const id = db.transaction(() => {
+    db.run(
+      "INSERT INTO batches (label, sender, note, zats, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+      [label, sender, note, zats, now, now + days * 86_400_000],
+    );
+    const batchId = lastId();
+    for (const t of tokens) db.run("INSERT INTO links (batch_id, token_hash) VALUES (?, ?)", [batchId, hash(t)]);
+    return batchId;
+  })();
+  // The only time these links exist outside the recipients' hands.
+  return json({ id, links: tokens.map((t) => `${PUBLIC_URL}/c/${t}`) }, 201);
+}
+
+function batches() {
+  type Batch = { id: number; label: string; sender: string; note: string; zats: number; created_at: number; expires_at: number };
+  type Row = { status: string; txid: string | null; height: number | null; claimed_at: number | null; delivered_at: number | null };
+  const links = db.query<Row, [number]>(
+    "SELECT status, txid, height, claimed_at, delivered_at FROM links WHERE batch_id = ? ORDER BY id",
+  );
+  return db.query<Batch, []>("SELECT * FROM batches ORDER BY id DESC").all().map((b) => ({
+    id: b.id, label: b.label, sender: b.sender, note: b.note, zats: b.zats, createdAt: b.created_at, expiresAt: b.expires_at,
+    links: links.all(b.id).map((l, i) => ({
+      n: i + 1, status: expired(l.status, b.expires_at) ? "expired" : l.status,
+      txid: l.txid, height: l.height, claimedAt: l.claimed_at, deliveredAt: l.delivered_at,
+    })),
+  }));
+}
+
+async function treasury() {
+  const reserved = db.query<{ z: number }, [number]>(
+    `SELECT COALESCE(SUM(zats), 0) AS z FROM links JOIN batches ON batches.id = links.batch_id
+     WHERE status IN ('sealed', 'queued') AND expires_at > ?`,
+  ).get(Date.now())!.z;
+  return { network: NETWORK, ...(await wallet.treasury()), reserved };
+}
+
+// The payout worker: send queued claims, then watch sent payouts until they're mined.
+let ticking = false;
+let lastSync = 0;
+async function tick() {
+  if (ticking) return;
+  ticking = true;
+  try {
+    type Queued = { id: number; address: string; zats: number; sender: string; note: string; claimed_at: number };
+    const queued = db.query<Queued, []>(
+      `SELECT links.id, address, zats, sender, note, claimed_at FROM links JOIN batches ON batches.id = links.batch_id
+       WHERE status = 'queued' ORDER BY claimed_at`,
+    ).all();
+    for (const l of queued) {
+      try {
+        const txid = await wallet.send(l.address, l.zats, memo(l.sender, l.note));
+        db.run("UPDATE links SET status = 'sent', txid = ?, sent_at = ? WHERE id = ?", [txid, Date.now(), l.id]);
+      } catch (e) {
+        // Change from the last payout is still confirming: keep the claim queued for a while.
+        if (/Insufficient balance/i.test(errorText(e)) && Date.now() - l.claimed_at < 10 * 60_000) continue;
+        // Otherwise release the link so the recipient can try again, and forget the address meanwhile.
+        db.run("UPDATE links SET status = 'sealed', address = NULL, error = ? WHERE id = ?", [errorText(e), l.id]);
+      }
+    }
+    const sent = db.query<{ id: number; txid: string; sent_at: number }, []>(
+      "SELECT id, txid, sent_at FROM links WHERE status = 'sent'",
+    ).all();
+    if (sent.length || Date.now() - lastSync > 60_000) {
+      if (sent.some((s) => Date.now() - s.sent_at > 8_000)) await wallet.mine(); // regtest only: stand-in for the next block
+      await wallet.sync();
+      lastSync = Date.now();
+      const mined = sent.length ? await wallet.minedHeights() : new Map<string, number>();
+      for (const s of sent) {
+        const height = mined.get(s.txid);
+        if (height) {
+          db.run("UPDATE links SET status = 'delivered', height = ?, delivered_at = ?, address = NULL WHERE id = ?", [
+            height, Date.now(), s.id,
+          ]);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("worker:", errorText(e));
+  } finally {
+    ticking = false;
+  }
+}
+
+async function serveStatic(path: string) {
+  const target = resolve(PUBLIC_DIR, `.${path}`);
+  const file = Bun.file(target);
+  if (target.startsWith(`${PUBLIC_DIR}/`) && (await file.exists())) return new Response(file, { headers: HEADERS });
+  return new Response(Bun.file(`${PUBLIC_DIR}/index.html`), { headers: { ...HEADERS, "content-type": "text/html" } });
+}
+
+const TOKEN = "([A-Za-z0-9_-]{22})";
+export function start(port = Number(process.env.PORT ?? 3000)) {
+  setInterval(tick, TICK_MS);
+  return Bun.serve({
+    port,
+    hostname: process.env.HOST ?? "127.0.0.1",
+    async fetch(req) {
+      const path = new URL(req.url).pathname;
+      let m: RegExpMatchArray | null;
+      if (path === "/api/health") return json({ ok: true, network: NETWORK });
+      if ((m = path.match(new RegExp(`^/api/link/${TOKEN}$`))) && req.method === "GET") {
+        const link = linkByToken.get(hash(m[1]));
+        return link ? json(view(link)) : fail(404, "This link doesn't exist.");
+      }
+      if ((m = path.match(new RegExp(`^/api/link/${TOKEN}/claim$`))) && req.method === "POST") return claim(m[1], req);
+      if (path.startsWith("/api/admin/")) {
+        if (!admin(req)) return fail(401, "Wrong admin token.");
+        if (path === "/api/admin/batches") return req.method === "POST" ? createBatch(req) : json(batches());
+        if (path === "/api/admin/treasury") return json(await treasury());
+      }
+      if (path.startsWith("/api/")) return fail(404, "Not found.");
+      return serveStatic(path);
+    },
+    error: (e) => fail(500, errorText(e)),
+  });
+}
+
+if (import.meta.main) {
+  const server = start();
+  console.log(`Cachet on ${server.url} (network ${NETWORK}, data ${DATA_DIR})`);
+}
