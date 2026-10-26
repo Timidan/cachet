@@ -58,7 +58,6 @@ export function Seal({ monogram, broken, disabled, onPress, label }: {
 }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
   const reduce = useReducedMotion();
-  const fall = (to: object) => (broken ? { ...to, opacity: 0 } : { x: 0, y: 0, rotate: 0, opacity: 1 });
   return (
     <motion.button
       type="button"
@@ -69,17 +68,24 @@ export function Seal({ monogram, broken, disabled, onPress, label }: {
       className={`relative block size-[clamp(112px,30vw,148px)] cursor-pointer rounded-full disabled:cursor-default ${disabled || broken ? "" : "seal-ready"}`}
       style={{ filter: "drop-shadow(0 10px 14px rgba(0,0,0,.45))" }}
     >
-      {HALVES.map((h, i) => (
-        <motion.span
-          key={i}
-          className="absolute inset-0"
-          initial={false}
-          animate={fall(h.fall)}
-          transition={{ duration: reduce ? 0 : 0.95, ease: EASE }}
-        >
-          <SealArt monogram={monogram} id={`${id}${i}`} clip={h.d} />
-        </motion.span>
-      ))}
+      {/* Whole until it breaks: two pre-cut halves would show a hairline seam. */}
+      {broken ? (
+        HALVES.map((h, i) => (
+          <motion.span
+            key={i}
+            className="absolute inset-0"
+            initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
+            animate={{ ...h.fall, opacity: 0 }}
+            transition={{ duration: reduce ? 0 : 0.95, ease: EASE }}
+          >
+            <SealArt monogram={monogram} id={`${id}${i}`} clip={h.d} />
+          </motion.span>
+        ))
+      ) : (
+        <span className="absolute inset-0">
+          <SealArt monogram={monogram} id={`${id}w`} />
+        </span>
+      )}
       {broken && !reduce &&
         FLAKES.map((f, i) => (
           <motion.span
@@ -101,11 +107,17 @@ export function SealMark({ monogram, state }: { monogram: string; state: "sealed
   const apart = state === "delivered" ? 5 : state === "travelling" ? 1.5 : 0;
   return (
     <span className="relative inline-block size-7" style={{ filter: state === "expired" ? "grayscale(1) opacity(.45)" : undefined }}>
-      {HALVES.map((h, i) => (
-        <span key={i} className="absolute inset-0" style={{ transform: `translateX(${i ? apart : -apart}px)` }}>
-          <SealArt monogram={monogram} id={`${id}${i}`} clip={h.d} />
+      {apart ? (
+        HALVES.map((h, i) => (
+          <span key={i} className="absolute inset-0" style={{ transform: `translateX(${i ? apart : -apart}px)` }}>
+            <SealArt monogram={monogram} id={`${id}${i}`} clip={h.d} />
+          </span>
+        ))
+      ) : (
+        <span className="absolute inset-0">
+          <SealArt monogram={monogram} id={`${id}w`} />
         </span>
-      ))}
+      )}
     </span>
   );
 }

@@ -5,6 +5,7 @@ export type LinkView = {
   status: Status; sender: string; note: string; zats: number; network: Network;
   createdAt: number; expiresAt: number; txid: string | null; height: number | null;
   deliveredAt: number | null; error: string | null;
+  demoAddress: string | null; // regtest demo only: Cachet's own test-chain wallet
 };
 export type Batch = {
   id: number; label: string; sender: string; note: string; zats: number; createdAt: number; expiresAt: number;
@@ -35,6 +36,9 @@ export async function claimLink(token: string, address: string): Promise<LinkVie
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ address }),
   }));
 }
+
+export const health = (): Promise<{ network: Network; sample: boolean }> => fetch("/api/health").then(body);
+export const sampleLetter = (): Promise<{ url: string }> => fetch("/api/sample", { method: "POST" }).then(body);
 
 export async function admin<T>(path: string, key: string, init: RequestInit = {}): Promise<T> {
   return body(await fetch(`/api/admin/${path}`, {

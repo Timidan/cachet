@@ -1,10 +1,11 @@
+import { useEffect, useState } from "react";
 import { Letter } from "./Letter";
-import type { LinkView } from "./api";
+import { health, sampleLetter, type LinkView } from "./api";
 
 // A real payout made through Cachet's API on its regtest chain (block 233).
 const SAMPLE: LinkView = {
   status: "delivered", sender: "Zecathon", note: "Thanks for judging", zats: 20_000, network: "regtest",
-  createdAt: 1793057700000, expiresAt: 1793662524675, height: 233, deliveredAt: 1793057737638, error: null,
+  createdAt: 1793057700000, expiresAt: 1793662524675, height: 233, deliveredAt: 1793057737638, error: null, demoAddress: null,
   txid: "72e7f8083940d57014bc4e8cb14e869a9a056379d9de959a31014016b92a1ba0",
 };
 
@@ -16,6 +17,12 @@ const COMPARE = [
 ];
 
 export function Home() {
+  const [sample, setSample] = useState(false);
+  const [sampleError, setSampleError] = useState<string | null>(null);
+  useEffect(() => { health().then((h) => setSample(h.sample)).catch(() => {}); }, []);
+  const openSample = () =>
+    sampleLetter().then(({ url }) => location.assign(url)).catch((e: Error) => setSampleError(e.message));
+
   return (
     <div className="mx-auto max-w-6xl px-5 sm:px-8">
       <nav className="flex items-center justify-between py-6">
@@ -30,7 +37,17 @@ export function Home() {
             The money stays in your treasury until they open it. They give a shielded address once, it's paid in
             Zcash, and Cachet forgets the address.
           </p>
-          <a href="/desk" className="paper sc mt-9 inline-block rounded-[3px] px-7 py-3.5 text-lg">Open the desk</a>
+          <div className="mt-9 flex flex-wrap items-center gap-x-7 gap-y-4">
+            {sample && (
+              <button type="button" onClick={openSample} className="paper sc rounded-[3px] px-7 py-3.5 text-lg">
+                Open a sample letter
+              </button>
+            )}
+            <a href="/desk" className={sample ? "sc text-lg text-paper underline decoration-paper/40 underline-offset-[6px]" : "paper sc rounded-[3px] px-7 py-3.5 text-lg"}>
+              Open the desk
+            </a>
+          </div>
+          {sampleError && <p role="alert" className="mt-4 text-[#e7a08f]">{sampleError}</p>}
         </div>
         <figure className="mx-auto w-full max-w-[540px] rotate-[1.4deg]">
           <Letter link={SAMPLE} address="uregtest150swjtm94ljj7mf59v3k8cqtfh6a2qj6ee5s5kzlyatgxzganezypnlgxvzl46qv3ce9yr95h9359frty85ctc04t2zjqv9p8cyll7raqjhdf7gxtkkjv9qegk7gwy2wvedsq4szh00l0n4nu6excsatplf7n24wf3t4mw4hs5wf0hz93gjtftmfn64lqkyvzhuluwv5dw69kmmmpdz" />

@@ -193,6 +193,15 @@ function Envelope({ link, address, setAddress, refusal, busy, opening, onOpen }:
               disabled={busy || opening}
               className="type mt-1 w-full border-0 border-b border-dashed border-rule bg-transparent py-2 text-base text-ink outline-none placeholder:text-ink-soft/55 focus:border-ink"
             />
+            {link.demoAddress && !ready && (
+              <button
+                type="button"
+                className="sc mt-3 block text-sm text-ink underline decoration-rule underline-offset-4"
+                onClick={() => setAddress(link.demoAddress!)}
+              >
+                No wallet on this test chain? Use Cachet's demo wallet
+              </button>
+            )}
             {refusal ? (
               <p role="alert" className="mt-3 leading-snug text-refuse">{refusal}</p>
             ) : (

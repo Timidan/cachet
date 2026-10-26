@@ -13,6 +13,9 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN ?? "";
 const PUBLIC_URL = (process.env.PUBLIC_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
 const PUBLIC_DIR = resolve(import.meta.dir, "web/dist");
 const TICK_MS = Number(process.env.TICK_MS ?? 4_000);
+// Regtest demo only: a wallet Cachet runs on the test chain, so judges can open a sample letter without one.
+const DEMO_RECIPIENT = NETWORK === "regtest" ? (process.env.DEMO_RECIPIENT ?? "") : "";
+const DEMO_CAP = 1_000; // sample letters in total, so the demo can't drain the regtest treasury
 const MIN_ZATS = 5_000; // ZIP-317 marginal fee: a smaller note costs the recipient more to spend than it holds
 const MEMO_BYTES = 512;
 
@@ -61,7 +64,27 @@ function view(l: Link) {
   return {
     status, sender: l.sender, note: l.note, zats: l.zats, network: NETWORK, createdAt: l.created_at, expiresAt: l.expires_at,
     txid: l.txid, height: l.height, deliveredAt: l.delivered_at, error: status === "sealed" ? l.error : null,
+    demoAddress: DEMO_RECIPIENT || null,
   };
+}
+
+// One sample letter for a visitor, from a standing "sample letters" batch.
+function sampleLetter() {
+  if (!DEMO_RECIPIENT) return fail(404, "Not found.");
+  const label = "Sample letters";
+  let batch = db.query<{ id: number }, [string]>("SELECT id FROM batches WHERE label = ?").get(label);
+  if (!batch) {
+    db.run(
+      "INSERT INTO batches (label, sender, note, zats, created_at, expires_at) VALUES (?, 'Cachet', 'A sample letter, on the test chain', 20000, ?, ?)",
+      [label, Date.now(), Date.now() + 365 * 86_400_000],
+    );
+    batch = { id: lastId() };
+  }
+  const made = db.query<{ n: number }, [number]>("SELECT COUNT(*) AS n FROM links WHERE batch_id = ?").get(batch.id)!.n;
+  if (made >= DEMO_CAP) return fail(429, "The sample letters have all been sent.");
+  const token = newToken();
+  db.run("INSERT INTO links (batch_id, token_hash) VALUES (?, ?)", [batch.id, hash(token)]);
+  return json({ url: `/c/${token}` }, 201);
 }
 
 async function claim(token: string, req: Request) {
@@ -157,6 +180,8 @@ async function tick() {
         db.run("UPDATE links SET status = 'sealed', address = NULL, error = ? WHERE id = ?", [errorText(e), l.id]);
       }
     }
+    // Regtest only: a claim waiting on change needs a block, and nothing else will mine one.
+    if (queued.length && db.query("SELECT 1 FROM links WHERE status = 'queued'").get()) await wallet.mine();
     const sent = db.query<{ id: number; txid: string; sent_at: number }, []>(
       "SELECT id, txid, sent_at FROM links WHERE status = 'sent'",
     ).all();
@@ -197,12 +222,13 @@ export function start(port = Number(process.env.PORT ?? 3000)) {
     async fetch(req) {
       const path = new URL(req.url).pathname;
       let m: RegExpMatchArray | null;
-      if (path === "/api/health") return json({ ok: true, network: NETWORK });
+      if (path === "/api/health") return json({ ok: true, network: NETWORK, sample: Boolean(DEMO_RECIPIENT) });
       if ((m = path.match(new RegExp(`^/api/link/${TOKEN}$`))) && req.method === "GET") {
         const link = linkByToken.get(hash(m[1]));
         return link ? json(view(link)) : fail(404, "This link doesn't exist.");
       }
       if ((m = path.match(new RegExp(`^/api/link/${TOKEN}/claim$`))) && req.method === "POST") return claim(m[1], req);
+      if (path === "/api/sample" && req.method === "POST") return sampleLetter();
       if (path.startsWith("/api/admin/")) {
         if (!admin(req)) return fail(401, "Wrong admin token.");
         if (path === "/api/admin/batches") return req.method === "POST" ? createBatch(req) : json(batches());
