@@ -33,10 +33,10 @@ CREATE TABLE IF NOT EXISTS links (
 
 type Link = {
   id: number; status: string; txid: string | null; height: number | null; error: string | null;
-  delivered_at: number | null; sender: string; note: string; zats: number; expires_at: number;
+  delivered_at: number | null; sender: string; note: string; zats: number; created_at: number; expires_at: number;
 };
 const linkByToken = db.query<Link, [string]>(
-  `SELECT links.id, status, txid, height, error, delivered_at, sender, note, zats, expires_at
+  `SELECT links.id, status, txid, height, error, delivered_at, sender, note, zats, created_at, expires_at
    FROM links JOIN batches ON batches.id = links.batch_id WHERE token_hash = ?`,
 );
 
@@ -59,7 +59,7 @@ const fail = (status: number, error: string) => json({ error }, status);
 function view(l: Link) {
   const status = expired(l.status, l.expires_at) ? "expired" : l.status;
   return {
-    status, sender: l.sender, note: l.note, zats: l.zats, network: NETWORK, expiresAt: l.expires_at,
+    status, sender: l.sender, note: l.note, zats: l.zats, network: NETWORK, createdAt: l.created_at, expiresAt: l.expires_at,
     txid: l.txid, height: l.height, deliveredAt: l.delivered_at, error: status === "sealed" ? l.error : null,
   };
 }
