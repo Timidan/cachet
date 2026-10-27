@@ -210,6 +210,8 @@ async function serveStatic(path: string) {
   const target = resolve(PUBLIC_DIR, `.${path}`);
   const file = Bun.file(target);
   if (target.startsWith(`${PUBLIC_DIR}/`) && (await file.exists())) return new Response(file, { headers: HEADERS });
+  // A missing asset is a 404: answering with the app's HTML would let a CDN cache it as an image.
+  if (/\.[a-z0-9]+$/i.test(path)) return new Response("Not found", { status: 404, headers: HEADERS });
   return new Response(Bun.file(`${PUBLIC_DIR}/index.html`), { headers: { ...HEADERS, "content-type": "text/html" } });
 }
 
