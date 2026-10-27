@@ -20,3 +20,12 @@ video/node_modules/
 video/*.webm
 video/*.mp4
 deploy/build/
+docs/archive/
+anatomy/backup/
+docs/anatomy/*
+!docs/anatomy/desktop-dark.png
+!docs/anatomy/desktop-light.png
+!docs/anatomy/phone-page-light.png
+!docs/anatomy/motion-light.png
+docs/samples/*
+!docs/samples/c-playful.png

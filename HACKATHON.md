@@ -91,3 +91,20 @@ Non-goal added: funding a Zodl/Vizor gift card at claim time — the gift.zodl.c
 
 ## Hosting plan (prepared, NOT deployed — needs user approval)
 LuxVPS (Debian 11, docker, edge Caddy behind Cloudflare). deploy/: Arch-based image (glibc for our binaries), run.sh starts regtest chain + app, compose joins public_proxy. Needs: (1) new Cloudflare proxied A record cachet.timidan.xyz -> 37.114.41.229, (2) Caddy site block `cachet.timidan.xyz { import cloudflare_only; encode zstd gzip; reverse_proxy cachet:3000 }` (no X-Forwarded-For: the app never needs client IPs), (3) copy chain state + treasury wallet to /home/agentops/cachet/data.
+
+## G4 form draft (Zecathon submit form: name, description <=2000, repo, demo, video, track)
+- Project name: Cachet
+- Track: Shielded Payments
+- Repo: https://github.com/Timidan/cachet (PRIVATE until submission; must be public by Oct 28 23:59 UTC)
+- Demo: https://cachet.timidan.xyz
+- Video: TBD
+- Description:
+Cachet: pay anyone with a link. Your ZEC stays in your treasury until they claim it, then arrives shielded.
+
+Hackathons, bounty programs and grant rounds pay people they barely know, and today they collect names and addresses in forms and chats first. Cachet skips that list. An organiser creates payout links in the dashboard; each recipient opens theirs, pastes a shielded address once and presses Claim. Cachet pays it from the treasury in Zcash's Ironwood pool, with the organiser's message as an encrypted memo, and deletes the address when the block confirms. Unclaimed links expire, and their money never leaves the treasury. Wallet gift cards (Zodl, Vizor) move money when the card is made; Cachet moves it only when a link is claimed, with no batch limit, to any shielded address.
+
+Why it doesn't leak: every payout is a fully shielded Ironwood transaction (0 transparent inputs or outputs; only the fee is public). Transparent, Sapling-only and wrong-network addresses are refused before any payment is built (zcash-devtool would otherwise pay a transparent address in public). Links are stored only as SHA-256 fingerprints. Addresses are kept only between claim and block. No analytics, no third-party requests, no referrer leaks.
+
+What is real: payouts are real shielded transactions built by zcash-devtool (librustzcash, NU6.3 Ironwood) and accepted by a Zebra 7.0.0 node. What is a mock: the hosted demo runs on Cachet's own regtest chain (the rules mainnet runs today), and "Try a demo payout" pays a demo address Cachet controls, because the public testnet faucets have been down since NU7. The treasury is a server hot wallet, and zcash-devtool is a developer tool.
+
+Evidence txids and the privacy model are in the README.
