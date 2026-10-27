@@ -70,6 +70,10 @@ On the live demo, press **Try a demo payout**, then **Testing? Use a demo addres
 
 ## Architecture
 
+![An isometric machine: a treasury vault, gold coins for the links, an address reader that rejects a transparent card, a closed tube for the shielded payment, a block clock and a shredder](docs/anatomy/desktop-light.png)
+
+The figure above is interactive on the live site (Under the hood): pick a link, choose a shielded or a transparent address, and watch the refusal, the payment and the address deletion. It is built from 180 parts; its numbers come from the server's real behaviour.
+
 One Bun process (`server.ts`) serves the JSON API, the built web app and an in-process payout worker. Links live in SQLite as SHA-256 hashes. The worker calls zcash-devtool for every payout, behind a lock because the wallet is one SQLite file. The web app (`web/`) is React with Vite; its fonts are bundled, so opening a link makes no third-party request.
 
 ## Run it yourself
