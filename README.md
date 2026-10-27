@@ -1,6 +1,6 @@
 # Cachet
 
-Pay anyone with a link: your ZEC stays in your treasury until they claim it, then arrives shielded.
+Pay anyone with a link: your ZEC stays in your treasury until they claim it and your key signs, then arrives shielded.
 
 [Live demo](#try-it-in-60-seconds) · [Video](#) · [Evidence](#evidence) · [How it works](#how-it-works)
 
@@ -8,12 +8,14 @@ Pay anyone with a link: your ZEC stays in your treasury until they claim it, the
 
 Hackathons, bounty programs and grant rounds pay people they barely know. Today they collect everyone's name and address in a form or a Telegram chat first, and that list outlives the payment. Cachet skips the list: the organiser creates a link, the recipient claims it with a shielded address, and the payment arrives in Zcash's Ironwood pool with the organiser's note as an encrypted memo. Cachet deletes the address as soon as the block confirms the payment.
 
+Cachet never holds your spending key. Its server runs on the treasury's viewing key and builds each payout as a PCZT (a partially created Zcash transaction); your signer signs it where your seed is kept.
+
 ## How it works
 
 1. **Create links.** In the dashboard, the organiser sets an amount, a message and an expiry, and gets one link per recipient. Nothing moves on-chain yet.
 2. **Send the links** over email, Signal or any channel. Cachet keeps only a SHA-256 fingerprint of each link, so it can't show them again.
 3. **Claim.** The recipient opens their link, pastes a unified address and presses Claim. Transparent and Sapling-only addresses are refused before any payment is built: a payment to them would be public.
-4. **Pay shielded.** Cachet's worker pays the address from the treasury in the Ironwood pool, with the note as a memo encrypted to the recipient.
+4. **Approve.** Cachet builds the payout from the treasury's viewing key as a PCZT and proves it. Your signer (`signer.ts`), run where the seed is kept, prints what the payout pays, signs it with your key and hands it back. Cachet broadcasts it in the Ironwood pool, with the note as a memo encrypted to the recipient.
 5. **Forget.** When the block lands, the receipt shows the transaction id and Cachet sets the stored address to empty. A link nobody opens expires, and its money never left the treasury.
 
 ## Why not a wallet gift card?
@@ -24,6 +26,7 @@ Zodl and Vizor already ship Zcash gift cards, and for a gift they are the right 
 |---|---|---|
 | The money moves | when you make the card | when they claim the link |
 | If it's never claimed | the money waits in the card | it never leaves your treasury |
+| Who can spend it | anyone holding the card's link | only your key, after a claim |
 | How many at once | four cards per batch in Vizor | up to 200 links per batch |
 | To receive | a wallet that redeems gift cards | any shielded address |
 
@@ -33,7 +36,10 @@ Sources: [Vizor release notes](https://github.com/chainapsis/vizor-wallet/releas
 
 | What Cachet uses | Where | What it does for the user |
 |---|---|---|
-| `zcash-devtool wallet send` (librustzcash, NU6.3 Ironwood and NU7) | [`lib/devtool.ts`](lib/devtool.ts) | Builds, proves and broadcasts each payout from the treasury's Ironwood notes |
+| Full viewing key (`wallet init-fvk`) | [`deploy/watch-wallet.sh`](deploy/watch-wallet.sh) | The server runs on a watch-only copy of the treasury. The dashboard's audit key shows an accountant every payout and memo, and can't spend |
+| PCZTs: `pczt create` + `pczt prove` | [`lib/devtool.ts`](lib/devtool.ts) | Builds and proves each payout from the treasury's Ironwood notes with the viewing key alone |
+| PCZTs: `pczt sign` | [`signer.ts`](signer.ts), [`patches/`](patches/) | Signs with the organiser's key on the organiser's machine. zcash-devtool skipped Ironwood spends; our 36-line patch calls librustzcash's existing Ironwood signer |
+| PCZTs: `pczt send` | [`lib/devtool.ts`](lib/devtool.ts) | Broadcasts the signed payout and records it in the watch-only wallet |
 | Encrypted memos | [`server.ts`](server.ts) `memo()` | The organiser's note travels inside the payment, readable only by the recipient |
 | `zcash-devtool inspect` | [`lib/address.ts`](lib/address.ts) | Refuses transparent, Sapling-only and wrong-network addresses before anything is sent |
 | `sync` + `list-tx` | [`lib/devtool.ts`](lib/devtool.ts) | Confirms delivery by block height, then the address is deleted |
@@ -42,10 +48,13 @@ Sources: [Vizor release notes](https://github.com/chainapsis/vizor-wallet/releas
 
 ## Evidence
 
-Payouts made through Cachet on its regtest chain (Zebra 7.0.0, Ironwood active):
+Payouts made through Cachet on regtest chains (Zebra 7.0.0, Ironwood active). The first three were signed outside Cachet, by the organiser's key:
 
 | Transaction | Block | What it shows |
 |---|---|---|
+| `67f28f0387664d302446c2ac0775888f954d23833a9f3687818e338685b80147` | 239, live demo chain | A demo claim on the live site, built from the viewing key and approved by the demo's signer; delivered 53 s after the claim |
+| `d65da8292b4d83552cacbb8e25d81a0d8b56aab892994fae3edd68063dcdffaa` | 241 | A claim through the API, approved by `signer.ts`: the signer printed the PCZT's outputs, signed, and Cachet sent it |
+| `07eac1ca6e0b068c7a7191240376e9677ac3dd87e1f28b8dc7744d487447a2ab` | 240 | The first PCZT payout: built by a watch-only wallet, signed by the seed wallet, 0 transparent; the recipient's wallet decrypted the memo |
 | `72e7f8083940d57014bc4e8cb14e869a9a056379d9de959a31014016b92a1ba0` | 233 | A claim through the API: 0.0002 ZEC; the recipient's wallet decrypted the memo "Thanks for judging — Zecathon" |
 | `c6fc3164c01517a10fcafb751dc35c983d32ccf07b630c015fe4787659c70b49` | 219 | The first payout: 0 transparent inputs or outputs, 0 Sapling, 0 Orchard, 2 Ironwood actions; the only public number is the 0.0001 fee |
 | `fa00ad39a37431136aaaaf39b4c8f61f473700c32d6d51affd4edb530778aece` | 232 | Why Cachet refuses transparent addresses: zcash-devtool paid one, and the amount and address are public |
@@ -56,15 +65,15 @@ Tests: `bun test lib` checks the address policy (a unified address is paid; a tr
 
 ## Try it in 60 seconds
 
-On the live demo, press **Try a demo payout**, then **Testing? Use a demo address**, then **Claim payment**. The payment is a real shielded transaction on the regtest chain; the demo wallet is Cachet's own, because nobody has a wallet on a private test chain. The receipt shows the block and transaction id when it lands.
+On the live demo, press **Try a demo payout**, then **Testing? Use a demo address**, then **Claim payment**. The receipt says the claim is waiting for approval; on the live demo a signer plays the organiser and approves it within about a minute. The payment is a real shielded transaction on the regtest chain; the demo address belongs to a wallet Cachet runs, because nobody has a wallet on a private test chain. The receipt shows the block and transaction id when it lands.
 
 ## Privacy model and limits
 
 - **On-chain**, a Cachet payout is an ordinary shielded transaction: the amount, the treasury and the recipient are hidden. It looks the same as paying someone directly from a shielded wallet.
 - **What Cachet removes** is the list: no form or chat holds names next to addresses, and the server keeps each address only between the claim and the block.
-- **What Cachet's server sees**: the address while it pays it, and the request like any web server. Cachet itself doesn't log IP addresses; run it behind a proxy that doesn't either, or open links over Tor.
+- **What Cachet's server sees**: the address while it pays it, the treasury's history (through the viewing key), and the request like any web server. Cachet itself doesn't log IP addresses; run it behind a proxy that doesn't either, or open links over Tor.
 - **Links work like cash.** Whoever holds a link can claim it, so send them privately. They expire.
-- **The treasury is a hot wallet** on the organiser's server. Keep only what you plan to pay out.
+- **Cachet never holds your spending key.** The server can see the treasury and build payouts, but only your signer can sign them, and the signer prints each payout's outputs from the PCZT itself before signing. On the live demo, a signer process on the same server plays the organiser and approves every claim.
 - **zcash-devtool is a developer tool**, not a hardened production wallet.
 - The demo runs on **regtest** with NU6.3 (Ironwood) rules, the rules mainnet runs today. NU7 is active on public testnet but not yet on mainnet.
 
@@ -74,26 +83,32 @@ On the live demo, press **Try a demo payout**, then **Testing? Use a demo addres
 
 The figure above is interactive on the live site (Under the hood): pick a link, choose a shielded or a transparent address, and watch the refusal, the payment and the address deletion. It is built from 180 parts; its numbers come from the server's real behaviour.
 
-One Bun process (`server.ts`) serves the JSON API, the built web app and an in-process payout worker. Links live in SQLite as SHA-256 hashes. The worker calls zcash-devtool for every payout, behind a lock because the wallet is one SQLite file. The web app (`web/`) is React with Vite; its fonts are bundled, so opening a link makes no third-party request.
+One Bun process (`server.ts`) serves the JSON API and the built web app, builds payouts as PCZTs from a watch-only wallet when the signer asks for one, and watches sent payouts confirm. It builds one payout at a time, because an unsigned PCZT doesn't reserve its notes. `signer.ts` runs wherever the seed is kept. Links live in SQLite as SHA-256 hashes. Every wallet call goes through zcash-devtool, behind a lock because the wallet is one SQLite file. The web app (`web/`) is React with Vite; its fonts are bundled, so opening a link makes no third-party request.
 
 ## Run it yourself
 
 ```sh
 # 1. Build the wallet (Rust) and the regtest chain
-cargo build --release --features regtest_support --manifest-path vendor/zcash-devtool/Cargo.toml   # github.com/zcash/zcash-devtool
+git clone https://github.com/zcash/zcash-devtool vendor/zcash-devtool && git -C vendor/zcash-devtool checkout 0b3436b
+git -C vendor/zcash-devtool apply ../../patches/zcash-devtool-ironwood-pczt-sign.patch   # Ironwood signing for pczt sign
+cargo build --release --features regtest_support --manifest-path vendor/zcash-devtool/Cargo.toml
 cargo install --locked zebrad@7.0.0 --root vendor/zebra
 (cd vendor && git clone https://github.com/zcash/lightwalletd && cd lightwalletd && go build -o lightwalletd .)
 regtest/up.sh start
 
-# 2. Configure (.env is read by Bun)
-#    NETWORK=regtest  WALLET_DIR=wallet-regtest  LWD_SERVER=127.0.0.1:9067
+# 2. Make Cachet's watch-only wallet from the treasury's seed wallet (made with `zcash-devtool wallet init`)
+deploy/watch-wallet.sh wallet-regtest wallet-watch
+
+# 3. Configure (.env is read by Bun)
+#    NETWORK=regtest  WALLET_DIR=wallet-watch  LWD_SERVER=127.0.0.1:9067
 #    REGTEST_RPC=http://127.0.0.1:18232  ADMIN_TOKEN=<long random string>  PUBLIC_URL=http://127.0.0.1:3000
 
-# 3. Run
+# 4. Run the app, and the signer where the seed is kept (it asks before signing each payout)
 (cd web && npm install && npm run build)
 bun server.ts
+SIGNER_WALLET=wallet-regtest bun signer.ts
 ```
 
-For mainnet, set `NETWORK=main` and `LWD_SERVER=zecrocks`, and fund the treasury's unified address.
+For mainnet, set `NETWORK=main` and `LWD_SERVER=zecrocks`, fund the treasury's unified address, and keep the seed wallet off the server.
 
 Built for [Zecathon 2026](https://thezecathon.com), Shielded Payments track. The research behind the positioning is in [`docs/research/`](docs/research/).

@@ -92,6 +92,14 @@ Non-goal added: funding a Zodl/Vizor gift card at claim time — the gift.zodl.c
 ## Hosting plan (prepared, NOT deployed — needs user approval)
 LuxVPS (Debian 11, docker, edge Caddy behind Cloudflare). deploy/: Arch-based image (glibc for our binaries), run.sh starts regtest chain + app, compose joins public_proxy. Needs: (1) new Cloudflare proxied A record cachet.timidan.xyz -> 37.114.41.229, (2) Caddy site block `cachet.timidan.xyz { import cloudflare_only; encode zstd gzip; reverse_proxy cachet:3000 }` (no X-Forwarded-For: the app never needs client IPs), (3) copy chain state + treasury wallet to /home/agentops/cachet/data.
 
+## Decision (Oct 27 ~11:00 UTC): the server never holds the spending key
+User: Cachet must not be a copy of NimDrops (Nimiq, Jul: one shared first-come link paid from an operator custody wallet; lost as a "custodial payout utility"), must use Zcash's own technology and fit the track.
+- Done: the server runs on a watch-only wallet (full viewing key); payouts are PCZTs built and proven by Cachet, signed by `signer.ts` with the organiser's seed, sent by Cachet. zcash-devtool's `pczt sign` skipped Ironwood; `patches/` adds it (librustzcash already had `Signer::sign_ironwood`). Audit key (UFVK) on the dashboard. Receipt: "Claimed, waiting for <sender> to approve".
+- Verified: local regtest d65da829 (block 241) and 003d62ae (242), addresses wiped; live site 67f28f03 (block 239), 53 s from claim to delivered, address wiped.
+- Hosted demo: a signer process on the same box plays the organiser (disclosed in README, form, video). Wording: "never holds your spending key", not "non-custodial".
+- Track fit: Shielded Payments lists payroll; pitch is private payroll for people who aren't on your payroll.
+- Not doing: FROST (PCZT is what it signs; a ceremony takes days), ZSA (not on mainnet), NEAR Intents (Cross-Chain track, outside dependency), ZIP-324 bearer links (unpublished), ZIP-48 multisig (transparent).
+
 ## G4 form draft (Zecathon submit form: name, description <=2000, repo, demo, video, track)
 - Project name: Cachet
 - Track: Shielded Payments
@@ -99,12 +107,14 @@ LuxVPS (Debian 11, docker, edge Caddy behind Cloudflare). deploy/: Arch-based im
 - Demo: https://cachet.timidan.xyz
 - Video: TBD
 - Description:
-Cachet: pay anyone with a link. Your ZEC stays in your treasury until they claim it, then arrives shielded.
+Cachet: pay anyone with a link. Your ZEC stays in your treasury until they claim it and your key signs, then arrives shielded.
 
-Hackathons, bounty programs and grant rounds pay people they barely know, and today they collect names and addresses in forms and chats first. Cachet skips that list. An organiser creates payout links in the dashboard; each recipient opens theirs, pastes a shielded address once and presses Claim. Cachet pays it from the treasury in Zcash's Ironwood pool, with the organiser's message as an encrypted memo, and deletes the address when the block confirms. Unclaimed links expire, and their money never leaves the treasury. Wallet gift cards (Zodl, Vizor) move money when the card is made; Cachet moves it only when a link is claimed, with no batch limit, to any shielded address.
+Hackathons, bounty programs and grant rounds pay people they barely know, and today they collect names and addresses in forms and chats first. Cachet skips that list. An organiser creates payout links in the dashboard; each recipient opens theirs, pastes a shielded address once and presses Claim. Cachet never holds the spending key: its server runs on the treasury's full viewing key, builds the payout as a PCZT and proves it, and the organiser's signer signs it on their own machine. Cachet sends it in Zcash's Ironwood pool with the organiser's message as an encrypted memo, and deletes the address when the block confirms. Unclaimed links expire, and their money never leaves the treasury. The viewing key doubles as an audit key: an accountant can see every payout and memo, and nobody else can. Unlike wallet gift cards (Zodl, Vizor), nothing moves until a link is claimed and approved.
 
-Why it doesn't leak: every payout is a fully shielded Ironwood transaction (0 transparent inputs or outputs; only the fee is public). Transparent, Sapling-only and wrong-network addresses are refused before any payment is built (zcash-devtool would otherwise pay a transparent address in public). Links are stored only as SHA-256 fingerprints. Addresses are kept only between claim and block. No analytics, no third-party requests, no referrer leaks.
+Why it doesn't leak: every payout is a fully shielded Ironwood transaction (0 transparent inputs or outputs; only the fee is public). Transparent, Sapling-only and wrong-network addresses are refused before any payment is built. Links are stored only as SHA-256 fingerprints. Addresses are kept only between claim and block. No analytics, no third-party requests.
 
-What is real: payouts are real shielded transactions built by zcash-devtool (librustzcash, NU6.3 Ironwood) and accepted by a Zebra 7.0.0 node. What is a mock: the hosted demo runs on Cachet's own regtest chain (the rules mainnet runs today), and "Try a demo payout" pays a demo address Cachet controls, because the public testnet faucets have been down since NU7. The treasury is a server hot wallet, and zcash-devtool is a developer tool.
+Built on zcash-devtool (librustzcash) viewing-key wallets and PCZTs, with a 36-line patch adding Ironwood spends to `pczt sign`; Zebra 7.0.0 and lightwalletd.
+
+What is real: payouts are real shielded transactions accepted by a Zebra node. What stands in: the hosted demo runs on Cachet's own regtest chain (the rules mainnet runs today), a signer process on the same server plays the organiser and approves every claim, and "Try a demo payout" pays a demo address Cachet runs, because the public testnet faucets have been down since NU7.
 
 Evidence txids and the privacy model are in the README.
