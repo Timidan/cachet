@@ -24,12 +24,8 @@ video/*.webm
 video/*.mp4
 deploy/build/
 docs/archive/
-anatomy/backup/
-docs/anatomy/*
-!docs/anatomy/desktop-dark.png
-!docs/anatomy/desktop-light.png
-!docs/anatomy/phone-page-light.png
-!docs/anatomy/motion-light.png
+anatomy/
+docs/anatomy/
 docs/samples/*
 !docs/samples/c-playful.png
 video/out/

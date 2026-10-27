@@ -139,9 +139,9 @@ The demo environment differs from a production deployment in four ways:
 | Regtest chain | [`regtest/`](regtest/) | Local Zebra and lightwalletd configuration and helper script |
 | Demo film | [`video/`](video/) | Frame-by-frame recording of the real flow (puppeteer-capture) |
 
-![Cachet's payout path as an isometric machine: a treasury vault, link tokens, an address reader that rejects a transparent card, a closed tube for the shielded payment, a block clock and a shredder](docs/anatomy/desktop-light.png)
+![Cachet's Under the hood section after a shielded payout: the coin has crossed the shielded pool to Received with its memo, and the address check shows the address deleted after delivery](docs/under-the-hood.png)
 
-The figure is interactive on the live site under **Under the hood**: choose a link and an address type to follow the refusal, the payment and the deletion.
+The live site's **Under the hood** section plays one payout: the coin hops from the link to the address check, gets stamped by your signer, crosses the shielded pool and lands with its memo. Switch to a transparent address to watch Cachet refuse it.
 
 Payouts are built one at a time, and the next only once the previous one is mined: the treasury wallet does not record sent payouts, so it cannot know their notes are spent any earlier.
 
