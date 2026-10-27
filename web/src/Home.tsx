@@ -79,8 +79,9 @@ export function Home() {
           </p>
           <div className="mt-9 flex flex-wrap gap-4">
             {sample && (
-              <button type="button" onClick={tryDemo} className="pill pill-ink">
-                Try a demo payout <ArrowRight className="size-5" strokeWidth={3} />
+              <button type="button" onClick={tryDemo} className="group pill pill-ink">
+                Try a demo payout{" "}
+                <ArrowRight className="size-5 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none" strokeWidth={3} />
               </button>
             )}
             <a href="/dashboard" className={`pill ${sample ? "pill-line" : "pill-ink"}`}>Create payout links</a>
@@ -115,7 +116,7 @@ export function Home() {
           ))}
         </ol>
 
-        <div className="mt-20 grid items-start gap-12 lg:grid-cols-2">
+        <div className="mt-20 grid grid-cols-1 items-start gap-12 lg:grid-cols-2">
           <figure>
             <Receipt link={SAMPLE} address={SAMPLE_ADDRESS} level="h3" />
             <figcaption className="mt-4 text-center font-extrabold text-ink-soft">A real payout, made with Cachet on its test network</figcaption>

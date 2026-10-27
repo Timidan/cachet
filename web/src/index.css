@@ -63,7 +63,17 @@ body {
   padding: 0.85rem 1.25rem; font-family: var(--font-body); font-weight: 600; font-size: 1rem; color: var(--color-ink); outline: none;
 }
 .field-mono { font-family: var(--font-mono); font-weight: 400; } /* addresses and numbers only */
+.field { transition: box-shadow 0.15s cubic-bezier(0.22, 1, 0.36, 1); }
 .field:focus { box-shadow: 4px 4px 0 var(--color-ink); }
+
+/* New things settle in once: receipt rows, the links you just made, payouts waiting for you. */
+@keyframes rise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+.rise { animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+
+/* A refused address gives the field a short shake, next to the written reason. */
+@keyframes shake { 0%, 100% { transform: none } 20% { transform: translateX(-7px) } 40% { transform: translateX(6px) }
+  60% { transform: translateX(-4px) } 80% { transform: translateX(2px) } }
+.shake { animation: shake 0.36s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
 .field::placeholder { color: var(--color-hint); }
 
 /* Doodles wobble a little, the way stickers would. */
@@ -90,6 +100,6 @@ body {
 ::selection { background: var(--color-ink); color: var(--color-sun); }
 
 @media (prefers-reduced-motion: reduce) {
-  .wobble, .drift, .coin-ready::after, .ink-line { animation: none; }
+  .wobble, .drift, .coin-ready::after, .ink-line, .rise, .shake { animation: none; }
   .pill { transition: none; }
 }

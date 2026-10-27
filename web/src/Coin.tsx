@@ -59,24 +59,27 @@ export function Coin({ broken, ready }: { broken: boolean; ready: boolean }) {
   );
 }
 
-/** A small coin for lists: whole (unclaimed), cracked (sending), split (paid) or faded (expired). */
+/** A small coin for lists: whole (unclaimed), cracked (sending), split (paid) or faded (expired).
+ *  The halves slide apart as a link moves on, so a refresh that changes its state shows the change. */
 export function CoinMark({ state }: { state: "sealed" | "travelling" | "delivered" | "expired" }) {
   const apart = state === "delivered" ? 5 : state === "travelling" ? 1.5 : 0;
+  const move = "transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
   return (
-    <span className="relative inline-block size-8" style={{ filter: state === "expired" ? "grayscale(1) opacity(.4)" : undefined }}>
-      {apart ? (
-        HALVES.map((h, i) => (
-          <img
-            key={i}
-            src={COIN}
-            alt=""
-            className="absolute inset-0 h-full w-full"
-            style={{ clipPath: h.clip, transform: `translateX(${i ? apart : -apart}px)` }}
-          />
-        ))
-      ) : (
-        <img src={COIN} alt="" className="absolute inset-0 h-full w-full" />
-      )}
+    <span
+      className="relative inline-block size-8 transition-[filter] duration-500 motion-reduce:transition-none"
+      style={{ filter: state === "expired" ? "grayscale(1) opacity(.4)" : undefined }}
+    >
+      {HALVES.map((h, i) => (
+        <img
+          key={i}
+          src={COIN}
+          alt=""
+          className={`absolute inset-0 h-full w-full ${move}`}
+          style={{ clipPath: h.clip, transform: `translateX(${i ? apart : -apart}px)` }}
+        />
+      ))}
+      {/* Whole while unclaimed: the halves side by side would show a hairline seam. */}
+      <img src={COIN} alt="" className={`absolute inset-0 h-full w-full ${move} ${apart ? "opacity-0" : ""}`} />
     </span>
   );
 }

@@ -93,7 +93,7 @@ export function Dashboard() {
       )}
 
       {treasury && treasury.awaiting > 0 && (
-        <section className="card mt-6 flex flex-wrap items-center justify-between gap-4 p-6">
+        <section className="rise card mt-6 flex flex-wrap items-center justify-between gap-4 p-6">
           <div>
             <h2 className="sticker-flat text-[1.6rem] leading-tight">
               {treasury.awaiting} payout{treasury.awaiting === 1 ? "" : "s"} to approve
@@ -193,7 +193,7 @@ function Create({ accessKey, onCreated }: { accessKey: string; onCreated: (label
 function Fresh({ label, links, onDone }: { label: string; links: string[]; onDone: () => void }) {
   const csv = `link\n${links.join("\n")}\n`;
   return (
-    <section className="card p-[7%]">
+    <section className="rise card p-[7%]">
       <h2 className="sticker text-balance text-[2.2rem] leading-none">Your links are ready</h2>
       <p className="mt-2 font-bold leading-snug text-ink-soft">Save them now. For privacy, Cachet stores only a fingerprint of each link and can't show them again.</p>
       <ol className="mt-5 max-h-64 space-y-1 overflow-y-auto font-mono text-sm">

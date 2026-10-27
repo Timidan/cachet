@@ -51,6 +51,14 @@ export function Claim({ token }: { token: string }) {
   const [busy, setBusy] = useState(false);
   const field = useRef<HTMLInputElement>(null);
   const reduce = useReducedMotion();
+  // Replays the field's shake (index.css) beside each written refusal.
+  const shake = () => {
+    const el = field.current;
+    if (!el) return;
+    el.classList.remove("shake");
+    void el.offsetWidth;
+    el.classList.add("shake");
+  };
 
   useEffect(() => {
     getLink(token)
@@ -90,6 +98,7 @@ export function Claim({ token }: { token: string }) {
     if (!a) {
       setRefusal("Paste your shielded Zcash address first.");
       field.current?.focus();
+      shake();
       return;
     }
     setBusy(true);
@@ -102,7 +111,7 @@ export function Claim({ token }: { token: string }) {
       const err = e as Error & { body?: Partial<LinkView> };
       if (err.body?.status) setLink(err.body as LinkView); // claimed elsewhere, or expired meanwhile
       setRefusal(err.message);
-      requestAnimationFrame(() => field.current?.focus()); // the error is read with the field
+      requestAnimationFrame(() => { field.current?.focus(); shake(); }); // the error is read with the field
     } finally {
       setBusy(false);
     }
