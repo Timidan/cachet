@@ -162,8 +162,9 @@ async function treasury() {
 const release = (id: number, why: string) =>
   db.run("UPDATE links SET status = 'sealed', address = NULL, error = ? WHERE id = ?", [why, id]);
 
-// The payout the signer is signing. One at a time: an unsigned PCZT doesn't reserve its notes, so a second one
-// built before this one is sent could spend the same note. Built when the signer asks, so it can't expire while waiting.
+// The payout the signer is signing. One at a time, and only once the last one is mined: the wallet doesn't record
+// sent payouts, so until then it doesn't know their notes are spent. Built when the signer asks, so it can't expire waiting.
+// ponytail: one payout per block; build several outputs into one PCZT if a batch needs to go out faster.
 let pending: { id: number; pczt: Uint8Array; at: number } | null = null;
 type Queued = { id: number; address: string; zats: number; sender: string; note: string; claimed_at: number };
 const nextQueued = db.query<Queued, []>(
@@ -173,6 +174,9 @@ const nextQueued = db.query<Queued, []>(
 
 async function nextPayout() {
   if (pending && Date.now() - pending.at > 10 * 60_000) pending = null; // the signer went away
+  if (!pending && db.query("SELECT 1 FROM links WHERE status = 'sent'").get()) {
+    return fail(503, "The last payout is still confirming. Try again in a moment.");
+  }
   if (!pending) {
     const l = nextQueued.get();
     if (!l) return new Response(null, { status: 204, headers: HEADERS });

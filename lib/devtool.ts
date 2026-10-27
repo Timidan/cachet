@@ -44,16 +44,20 @@ async function pipe(args: string[], input?: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(out);
 }
 
-// A payout ready for the organiser to sign: built and proven from the viewing key alone.
+// A payout ready for the organiser to sign: built and proven from the viewing key alone, with no outgoing
+// viewing key, so once it's sent only the recipient can decrypt who it paid and its memo.
 export async function build(address: string, zats: number, memo: string): Promise<Uint8Array> {
-  const pczt = await locked(() => pipe(["pczt", "-w", WALLET, "create", "--address", address, "--value", String(zats), "--memo", memo]));
+  const pczt = await locked(() =>
+    pipe(["pczt", "-w", WALLET, "create", "--discard-ovk", "--address", address, "--value", String(zats), "--memo", memo]),
+  );
   return pipe(["pczt", "prove"], pczt);
 }
 
-// Sends a signed payout and records it in the watch-only wallet, so its notes count as spent.
+// Sends a signed payout without recording it, so the wallet never holds the recipient's address.
+// The wallet learns of it from the chain once it's mined, and sees only its own change.
 export function broadcast(pczt: Uint8Array): Promise<string> {
   return locked(async () => {
-    const out = new TextDecoder().decode(await pipe(["pczt", "-w", WALLET, "send", "-s", SERVER], pczt));
+    const out = new TextDecoder().decode(await pipe(["pczt", "-w", WALLET, "send-without-storing", "-s", SERVER], pczt));
     const txid = out.match(/^[0-9a-f]{64}$/m)?.[0];
     if (!txid) throw new Error("the wallet did not return a transaction id");
     return txid;

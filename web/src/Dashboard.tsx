@@ -87,7 +87,7 @@ export function Dashboard() {
               {short(treasury.auditKey, 14, 8)}{" "}
               <Copy text={treasury.auditKey} label="Copy audit key" className="ml-2 inline-flex min-h-6 items-center py-1 font-extrabold underline decoration-2 underline-offset-4" />
             </p>
-            <p className="mt-1 text-pretty text-sm leading-snug text-ink-soft">Shows every payout and memo. It can't spend.</p>
+            <p className="mt-1 text-pretty text-sm leading-snug text-ink-soft">Shows every amount paid out, not who received it. It can't spend.</p>
           </div>
         </section>
       )}

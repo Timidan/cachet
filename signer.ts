@@ -38,11 +38,13 @@ for (;;) {
   }
   const { id, pczt } = (await r.json()) as { id: number; pczt: string };
   const unsigned = Buffer.from(pczt, "base64");
-  // Read the payout from the PCZT itself, not from anything Cachet says about it.
-  console.log(new TextDecoder().decode(await devtool(["pczt", "inspect"], unsigned)).trim());
-  if (!AUTO && prompt("Sign this payout? [y/N]")?.trim().toLowerCase() !== "y") {
-    console.log("Not signed. Stopping, so it isn't offered again.");
-    break;
+  if (!AUTO) {
+    // Read the payout from the PCZT itself, not from anything Cachet says about it. Shown, never logged.
+    console.log(new TextDecoder().decode(await devtool(["pczt", "inspect"], unsigned)).trim());
+    if (prompt("Sign this payout? [y/N]")?.trim().toLowerCase() !== "y") {
+      console.log("Not signed. Stopping, so it isn't offered again.");
+      break;
+    }
   }
   const signed = await devtool(["pczt", "-w", WALLET, "sign", "-i", IDENTITY], unsigned);
   const s = await api(`payouts/${id}`, { pczt: Buffer.from(signed).toString("base64") });

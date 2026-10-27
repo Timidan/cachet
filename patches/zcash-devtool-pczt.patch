@@ -1,3 +1,31 @@
+diff --git a/src/commands/pczt/create.rs b/src/commands/pczt/create.rs
+index 2679a32..00d127a 100644
+--- a/src/commands/pczt/create.rs
++++ b/src/commands/pczt/create.rs
+@@ -51,6 +51,10 @@ pub(crate) struct Command {
+     #[arg(long)]
+     memo: Option<String>,
+ 
++    /// Build the outputs with no outgoing viewing key, so only the recipient can decrypt them: not even the sender
++    #[arg(long)]
++    discard_ovk: bool,
++
+     /// Note management: the number of notes to maintain in the wallet
+     #[arg(long)]
+     #[arg(default_value_t = 4)]
+@@ -128,7 +132,11 @@ impl Command {
+             &SystemClock,
+             &mut UnwrapErr(SysRng),
+             account.id(),
+-            OvkPolicy::Sender,
++            if self.discard_ovk {
++                OvkPolicy::Discard
++            } else {
++                OvkPolicy::Sender
++            },
+             &proposal,
+             // Use the builder-derived expiry and a standard Orchard-pool bundle.
+             None,
 diff --git a/src/commands/pczt/sign.rs b/src/commands/pczt/sign.rs
 index 49c13f9..2492548 100644
 --- a/src/commands/pczt/sign.rs
