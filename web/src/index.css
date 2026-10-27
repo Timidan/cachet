@@ -80,6 +80,10 @@ body {
 @keyframes wobble { 0%, 100% { transform: rotate(-7deg) scale(1) } 50% { transform: rotate(7deg) scale(1.07) } }
 .wobble { animation: wobble 3.4s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
 
+/* A coin waiting at a station floats a little. */
+@keyframes bob { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-4px) } }
+.bob { animation: bob 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+
 /* The feature ticker drifts sideways forever. */
 @keyframes drift { from { transform: translateX(0) } to { transform: translateX(-50%) } }
 .drift { animation: drift 28s linear infinite; }
@@ -100,6 +104,6 @@ body {
 ::selection { background: var(--color-ink); color: var(--color-sun); }
 
 @media (prefers-reduced-motion: reduce) {
-  .wobble, .drift, .coin-ready::after, .ink-line, .rise, .shake { animation: none; }
+  .wobble, .drift, .bob, .coin-ready::after, .ink-line, .rise, .shake { animation: none; }
   .pill { transition: none; }
 }

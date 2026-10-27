@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, CircleAlert, Clock, KeyRound, Link2, Lock, ShieldCheck, Sparkle, Wallet } from "lucide-react";
+import { Journey } from "./Journey";
 import { Receipt } from "./Receipt";
 import { health, sampleLink, type LinkView } from "./api";
 
@@ -156,24 +157,11 @@ export function Home() {
       </section>
 
       <section id="under-the-hood" className="mx-auto max-w-7xl scroll-mt-6 px-5 pb-20 sm:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 className="sticker text-balance text-[clamp(2.6rem,6vw,4.2rem)] leading-none">Under the hood</h2>
-            <p className="mt-3 max-w-2xl text-pretty text-lg font-bold">
-              Pick a link, choose a shielded or a transparent address, and watch what Cachet does with each.
-            </p>
-          </div>
-          <a href="/anatomy/index-light.html" className="pill pill-line">Open full screen</a>
-        </div>
-        <div className="card mt-8 overflow-hidden p-0">
-          <iframe
-            src="/anatomy/index-light.html"
-            title="Interactive figure: how a Cachet payout stays private"
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            className="block h-[min(78vh,880px)] w-full border-0 max-md:h-[70vh]"
-          />
-        </div>
+        <h2 className="sticker text-balance text-[clamp(2.6rem,6vw,4.2rem)] leading-none">Under the hood</h2>
+        <p className="mt-3 max-w-2xl text-pretty text-lg font-bold">
+          Follow one payout from link to wallet, or paste a public address and watch Cachet refuse it.
+        </p>
+        <Journey />
       </section>
       </main>
 
