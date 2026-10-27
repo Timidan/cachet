@@ -76,6 +76,7 @@ export function Claim({ token }: { token: string }) {
           if (l.status === "sealed") {
             setPhase("link");
             setRefusal(l.error ? RETRY : null);
+            requestAnimationFrame(() => field.current?.focus()); // the receipt is gone; the error is read with the field
           }
         })
         .catch(() => {});

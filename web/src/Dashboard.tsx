@@ -110,7 +110,7 @@ function Gate({ onKey, error }: { onKey: (k: string) => void; error: string | nu
         <h1 className="sticker text-[2.6rem] leading-none">Sign in</h1>
         <p className="mt-2 font-bold text-ink-soft">to your Cachet dashboard</p>
         <label htmlFor="access-key" className="mt-6 block font-extrabold">Access key</label>
-        <input id="access-key" type="password" value={k} onChange={(e) => setK(e.target.value)} className={field} autoComplete="current-password" />
+        <input id="access-key" type="password" value={k} onChange={(e) => setK(e.target.value)} className={field} autoComplete="current-password" required />
         {error && <p role="alert" className="mt-3 text-refuse">{error}</p>}
         <button type="submit" className="pill pill-ink mt-7">Sign in</button>
       </form>
