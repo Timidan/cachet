@@ -100,6 +100,13 @@ User: Cachet must not be a copy of NimDrops (Nimiq, Jul: one shared first-come l
 - Track fit: Shielded Payments lists payroll; pitch is private payroll for people who aren't on your payroll.
 - Not doing: FROST (PCZT is what it signs; a ceremony takes days), ZSA (not on mainnet), NEAR Intents (Cross-Chain track, outside dependency), ZIP-324 bearer links (unpublished), ZIP-48 multisig (transparent).
 
+## G7 submit gate (status Oct 27 ~13:15 UTC; deadline Oct 28 23:59 UTC)
+- Hosted demo: PASS. Live claim 41097c4c delivered in block 240, 45 s after claiming; treasury view shows no recipient.
+- Video: IN PROGRESS. 1080p preview 1:48 sent to the user; 4K master rendering (`video/record.mjs 2`, then `video/edit.sh`). Hosting UNKNOWN: needs the user (YouTube upload by them, or self-host on cachet.timidan.xyz with their OK).
+- Repo public: FAIL until the user approves (Timidan/cachet is private; the rules require public by the deadline).
+- Form: description drafted (1913 chars); video URL pending; submit needs the user's go-ahead.
+- Track: Shielded Payments.
+
 ## G4 form draft (Zecathon submit form: name, description <=2000, repo, demo, video, track)
 - Project name: Cachet
 - Track: Shielded Payments
