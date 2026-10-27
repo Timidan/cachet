@@ -90,6 +90,17 @@ Sources: [Vizor release notes](https://github.com/chainapsis/vizor-wallet/releas
 
 ## Evidence
 
+### Public testnet
+
+Two claims through Cachet's normal flow on Zcash testnet (Oct 27). Cachet ran on the testnet treasury's viewing key, `signer.ts` approved each payout with the treasury's seed, and a testnet wallet claimed both links. Both are on a public explorer.
+
+| Transaction | Block | What it shows |
+|---|---|---|
+| [`08f0115f681f51170b7df0fd156f371922894ce58c52fa81639e2765a698f722`](https://testnet.zecblock.com/tx/08f0115f681f51170b7df0fd156f371922894ce58c52fa81639e2765a698f722) | 4,548,153 | A claim built from the viewing key, signed by `signer.ts` and sent without an outgoing viewing key. The recipient's wallet decrypted the memo; the treasury's viewing key sees 0.00075 TAZ leave (amount plus fee) and its own change, but not the recipient or the memo. |
+| [`ac3e6e1e5e8c9a4f2b01a07f4a7344284969b63fd179d74df1d01d9e56e73403`](https://testnet.zecblock.com/tx/ac3e6e1e5e8c9a4f2b01a07f4a7344284969b63fd179d74df1d01d9e56e73403) | 4,548,164 | The second link in the batch, paid from the first payout's change: 2 Ironwood inputs and 2 Ironwood outputs, nothing transparent. |
+
+### Regtest
+
 Payouts made through Cachet on regtest chains running Zebra 7.0.0 with Ironwood active. The first six were signed outside Cachet by the organiser's key.
 
 | Transaction | Block | What it shows |
@@ -110,7 +121,7 @@ Regtest transactions are not visible on public explorers.
 
 The demo environment differs from a production deployment in four ways:
 
-- It runs on Cachet's own regtest chain (Zebra 7.0.0 with NU6.3 Ironwood rules, the rules mainnet runs today), because none of the public testnet faucets we tried in the final week would pay out.
+- It runs on Cachet's own regtest chain (Zebra 7.0.0 with NU6.3 Ironwood rules, the rules mainnet runs today), so it doesn't depend on public testnet servers during judging. The same code paid two claims on public testnet; see [Evidence](#public-testnet).
 - A signer process on the same server plays the organiser and approves every claim.
 - The demo address belongs to a wallet Cachet runs, since visitors have no wallet on a private chain.
 - Its traffic passes through Cloudflare, which terminates TLS and so can see each request, including a link's token, the visitor's IP address and the shielded address in a claim. A production deployment should terminate TLS on its own server.
@@ -190,7 +201,7 @@ Bun reads these from `.env`.
 |---|---|---|
 | `NETWORK` | `regtest` | `main`, `test` or `regtest` |
 | `WALLET_DIR` | `wallet-watch` | The watch-only treasury wallet |
-| `LWD_SERVER` | `127.0.0.1:9067` | lightwalletd server, or `zecrocks` on mainnet |
+| `LWD_SERVER` | `127.0.0.1:9067` | lightwalletd server, or `zecrocks` on mainnet and testnet |
 | `ADMIN_TOKEN` | none | Organiser access key; a long random string |
 | `PUBLIC_URL` | `http://127.0.0.1:3000` | Base URL for generated links |
 | `DATA_DIR` | `data` | SQLite database location |
