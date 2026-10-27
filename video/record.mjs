@@ -343,8 +343,6 @@ async function reveal(card, count, ms) {
 
 async function scene(name, path, { zoom = 1, chip = true, panel = "body", exit = true, ready = () => true, setup } = {}, body) {
   await page.goto(BASE + path, { waitUntil: "domcontentloaded" });
-  // A lazy iframe never loads without frames, and the recorder waits on every frame of the page.
-  await inPage(() => document.querySelectorAll("iframe").forEach((f) => f.remove()));
   await inPage(installFilm, { zoom, chip, panel });
   if (setup) await setup();
   await inPage(() => film.pose("enter"));
@@ -366,6 +364,9 @@ async function scene(name, path, { zoom = 1, chip = true, panel = "body", exit =
   console.log(`${name}: ${(rec.recordedFrames / 60).toFixed(1)} s`);
 }
 
+// Title cards hide the page they sit on; this one has no lazy iframe (the landing page has, and the recorder would
+// wait on it forever).
+const CANVAS = "/c/film-canvas-0000000000";
 const BRAND = `<div class="brand" style="display:flex; align-items:center; gap:28px">
     <img class="coin" src="/art/play/coin.webp" alt="" style="width:150px; height:150px">
     <span class="sticker pop word" style="font-size:150px; line-height:1">Cachet</span></div>
@@ -377,7 +378,7 @@ const ROWS = `<div class="rows"><div class="rowh pop" style="--i:0; --r:-6deg"><
 
 try {
   // The brand, then the problem it removes: a roster builds up, outlives the payment, and falls away.
-  await scene("open", "/", {
+  await scene("open", CANVAS, {
     chip: false,
     panel: "stage",
     setup: () => inPage((b, rows) => film.stage(`<div style="display:grid; place-items:center">
@@ -585,7 +586,7 @@ try {
     { title: "The Zcash node", cmd: `getrawtransaction ${txid.slice(0, 8)}… 1 | jq`, lines: chain, width: 1000,
       say: "On-chain: no transparent inputs or outputs. The only public number is the fee." },
   ];
-  await scene("proof", "/", { panel: "stage", setup: () => inPage((c) => film.terms([c], { size: 27 }), CARDS[0]) }, async () => {
+  await scene("proof", CANVAS, { panel: "stage", setup: () => inPage((c) => film.terms([c], { size: 27 }), CARDS[0]) }, async () => {
     await hold(400);
     for (const [k, card] of CARDS.entries()) {
       if (k) {
@@ -618,7 +619,7 @@ try {
   });
 
   // The end card stays on screen: the live demo and the code.
-  await scene("end", "/", {
+  await scene("end", CANVAS, {
     chip: false,
     panel: "stage",
     exit: false,
