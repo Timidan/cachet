@@ -1,0 +1,14 @@
+# Cachet on LuxVPS. Joins the edge proxy's network; the edge routes cachet.timidan.xyz to cachet:3000.
+name: cachet
+services:
+  cachet:
+    build: .
+    container_name: cachet
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/data
+    networks: [public_proxy]
+networks:
+  public_proxy:
+    external: true

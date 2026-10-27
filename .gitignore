@@ -16,3 +16,7 @@ wallet-regtest/
 wallet-regtest-recipient/
 web/dist/
 web/node_modules/
+video/node_modules/
+video/*.webm
+video/*.mp4
+deploy/build/

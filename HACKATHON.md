@@ -83,3 +83,11 @@ Non-goal added: funding a Zodl/Vizor gift card at claim time — the gift.zodl.c
 
 ## G4 progress
 - API loop verified on regtest (Oct 27 00:40 WAT): batch → claim (transparent 422, Sapling-only 422, second claim 409) → delivered in ~8s, txid 72e7f8083940d57014bc4e8cb14e869a9a056379d9de959a31014016b92a1ba0 block 233; DB address wiped; recipient memo "Thanks for judging — Zecathon".
+
+## Design direction (Oct 27 ~01:15 WAT)
+- User rejected the paper/envelope look ("no Wrenchless types of envelopes"). Homepage research (docs: scratchpad sheet of TipLink, Peanut, Zodl, CipherPay, Penumbra, Aztec, Midnight, Linear, Mercury, Phantom, Stripe): nobody uses skeuomorphic paper; strongest = dark real product UI + one striking 3D object.
+- User decisions: keep the seal as a modern 3D object (gold + obsidian medallion that splits on claim); restart the anatomy figure with no envelopes (vault drum, seal-medallion carousel, card reader, opaque pneumatic tube, block dial, shredder); wants to SEE samples before choosing the art direction — Codex rendering 4 samples in docs/samples/.
+- First anatomy (postal desk, 123 solids, audits 0) rejected: envelopes + too boxy. Rebuild running at Hero bar.
+
+## Hosting plan (prepared, NOT deployed — needs user approval)
+LuxVPS (Debian 11, docker, edge Caddy behind Cloudflare). deploy/: Arch-based image (glibc for our binaries), run.sh starts regtest chain + app, compose joins public_proxy. Needs: (1) new Cloudflare proxied A record cachet.timidan.xyz -> 37.114.41.229, (2) Caddy site block `cachet.timidan.xyz { import cloudflare_only; encode zstd gzip; reverse_proxy cachet:3000 }` (no X-Forwarded-For: the app never needs client IPs), (3) copy chain state + treasury wallet to /home/agentops/cachet/data.
