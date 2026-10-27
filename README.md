@@ -110,7 +110,7 @@ Regtest transactions are not visible on public explorers.
 
 The demo environment differs from a production deployment in three ways:
 
-- It runs on Cachet's own regtest chain (Zebra 7.0.0 with NU6.3 Ironwood rules, the rules mainnet runs today), because the public testnet faucets have been unavailable since NU7.
+- It runs on Cachet's own regtest chain (Zebra 7.0.0 with NU6.3 Ironwood rules, the rules mainnet runs today), because none of the public testnet faucets we tried in the final week would pay out.
 - A signer process on the same server plays the organiser and approves every claim.
 - The demo address belongs to a wallet Cachet runs, since visitors have no wallet on a private chain.
 
