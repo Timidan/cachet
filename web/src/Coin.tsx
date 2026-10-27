@@ -13,22 +13,15 @@ const SPARKS = [
   { x: 102, y: 10, s: 14 }, { x: -30, y: -96, s: 11 }, { x: 36, y: -92, s: 9 },
 ];
 
-/** The gold seal-coin, which is also the button that opens the link. */
-export function Coin({ broken, disabled, onPress, label }: {
-  broken: boolean; disabled?: boolean; onPress?: () => void; label: string;
-}) {
+/** The gold seal-coin beside the amount. It glows while the payment is ready to claim and cracks open
+ *  when it is claimed. Decorative only: the Claim payment button is the control. */
+export function Coin({ broken, ready }: { broken: boolean; ready: boolean }) {
   const reduce = useReducedMotion();
-  const ready = !disabled && !broken;
   return (
-    <motion.button
-      type="button"
-      onClick={onPress}
-      disabled={disabled || broken}
-      aria-label={label}
-      whileHover={ready ? { rotate: -6, scale: 1.04 } : undefined}
-      whileTap={ready ? { scale: 0.92 } : undefined}
-      className={`relative block size-[clamp(104px,28vw,132px)] shrink-0 rounded-full disabled:cursor-default ${ready ? "coin-ready cursor-pointer" : ""}`}
-      style={{ filter: disabled && !broken ? "grayscale(.35) opacity(.75)" : "drop-shadow(0 6px 0 rgba(0,0,0,.25))" }}
+    <span
+      aria-hidden
+      className={`relative block size-[clamp(72px,20vw,104px)] shrink-0 rounded-full ${ready && !broken ? "coin-ready" : ""}`}
+      style={{ filter: "drop-shadow(0 5px 0 rgba(0,0,0,.25))" }}
     >
       {/* Whole until it cracks: two pre-cut halves would show a hairline seam. */}
       {broken ? (
@@ -58,16 +51,15 @@ export function Coin({ broken, disabled, onPress, label }: {
             initial={{ x: 0, y: 0, scale: 0.4, opacity: 1 }}
             animate={{ x: s.x, y: s.y, scale: 1.2, opacity: 0 }}
             transition={{ duration: 0.85, ease: EASE }}
-            aria-hidden
           >
             <path d="M12 0l2.6 9.4L24 12l-9.4 2.6L12 24l-2.6-9.4L0 12l9.4-2.6z" fill="#111" />
           </motion.svg>
         ))}
-    </motion.button>
+    </span>
   );
 }
 
-/** A small coin for lists: whole (sealed), cracked (on its way), split (delivered) or faded (expired). */
+/** A small coin for lists: whole (unclaimed), cracked (sending), split (paid) or faded (expired). */
 export function CoinMark({ state }: { state: "sealed" | "travelling" | "delivered" | "expired" }) {
   const apart = state === "delivered" ? 5 : state === "travelling" ? 1.5 : 0;
   return (

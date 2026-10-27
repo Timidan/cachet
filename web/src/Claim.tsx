@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { claimLink, day, getLink, PREFIX, zec, type LinkView } from "./api";
 import { Coin, EASE } from "./Coin";
@@ -6,7 +6,8 @@ import { Receipt } from "./Receipt";
 
 type Phase = "loading" | "missing" | "link" | "claiming" | "receipt";
 type Pose = "offer" | "no" | "hold" | "cheer" | "sleep";
-const retry = (error: string) => `The payment didn't go through (${error}). Your link still works, so try again.`;
+// Recipients see a plain message; the wallet's own error stays on the server.
+const RETRY = "The payment didn't go through. Your link still works, so try again in a few minutes.";
 
 /** The seal mascot, reacting to what is happening to the payment. */
 export function Mascot({ pose, className = "" }: { pose: Pose; className?: string }) {
@@ -48,6 +49,7 @@ export function Claim({ token }: { token: string }) {
   const [address, setAddress] = useState("");
   const [refusal, setRefusal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const field = useRef<HTMLInputElement>(null);
   const reduce = useReducedMotion();
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export function Claim({ token }: { token: string }) {
         if (!l) return setPhase("missing");
         setLink(l);
         setPhase(l.status === "sealed" || l.status === "expired" ? "link" : "receipt");
-        if (l.status === "sealed" && l.error) setRefusal(retry(l.error));
+        if (l.status === "sealed" && l.error) setRefusal(RETRY);
       })
       .catch(() => setPhase("missing"));
   }, [token]);
@@ -73,7 +75,7 @@ export function Claim({ token }: { token: string }) {
           // The payout failed and the link was released: let them try again.
           if (l.status === "sealed") {
             setPhase("link");
-            setRefusal(l.error ? retry(l.error) : null);
+            setRefusal(l.error ? RETRY : null);
           }
         })
         .catch(() => {});
@@ -83,7 +85,12 @@ export function Claim({ token }: { token: string }) {
 
   async function claim() {
     const a = address.trim();
-    if (!a || busy) return;
+    if (busy) return;
+    if (!a) {
+      setRefusal("Paste your shielded Zcash address first.");
+      field.current?.focus();
+      return;
+    }
     setBusy(true);
     setRefusal(null);
     try {
@@ -94,6 +101,7 @@ export function Claim({ token }: { token: string }) {
       const err = e as Error & { body?: Partial<LinkView> };
       if (err.body?.status) setLink(err.body as LinkView); // claimed elsewhere, or expired meanwhile
       setRefusal(err.message);
+      requestAnimationFrame(() => field.current?.focus()); // the error is read with the field
     } finally {
       setBusy(false);
     }
@@ -104,7 +112,7 @@ export function Claim({ token }: { token: string }) {
     return (
       <Stage pose="no">
         <section className="card w-full px-[7%] pb-[7%] pt-[clamp(3.5rem,12vw,4.5rem)]">
-          <h1 className="sticker text-[2.6rem] leading-none">Link not found</h1>
+          <h1 className="sticker text-balance text-[2.6rem] leading-none">Link not found</h1>
           <p className="mt-3 text-lg">Check that you copied the whole link.</p>
         </section>
       </Stage>
@@ -128,9 +136,14 @@ export function Claim({ token }: { token: string }) {
             className="card w-full px-[7%] pb-[7%] pt-[clamp(3.5rem,12vw,4.5rem)]"
             exit={reduce ? { opacity: 0 } : { y: 40, opacity: 0, transition: { duration: 0.5, ease: EASE } }}
           >
-            <p className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">{link.sender} sent you</p>
-            <p className="sticker mt-1 text-[clamp(2.8rem,11vw,4rem)] leading-none">{zec(link.zats)} ZEC</p>
-            {link.note && <p className="mt-2 text-xl">{link.note}</p>}
+            <div className="flex items-center gap-4">
+              <Coin broken={phase === "claiming"} ready={ready} />
+              <h1 className="min-w-0">
+                <span className="block text-sm font-extrabold uppercase tracking-wide text-ink-soft">{link.sender} sent you</span>{" "}
+                <span className="sticker mt-1 block text-[clamp(2.4rem,10vw,3.6rem)] leading-none">{zec(link.zats)} ZEC</span>
+              </h1>
+            </div>
+            {link.note && <p className="mt-3 text-pretty text-xl">{link.note}</p>}
 
             {expired ? (
               <div className="mt-6 rounded-[20px] border-[3px] border-dashed border-ink/40 p-5">
@@ -147,6 +160,7 @@ export function Claim({ token }: { token: string }) {
               >
                 <label htmlFor="address" className="font-extrabold">Your shielded Zcash address</label>
                 <input
+                  ref={field}
                   id="address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
@@ -157,27 +171,24 @@ export function Claim({ token }: { token: string }) {
                   spellCheck={false}
                   enterKeyHint="send"
                   disabled={busy || phase === "claiming"}
-                  className="field mt-2"
+                  aria-invalid={refusal ? true : undefined}
+                  aria-describedby={refusal ? "address-error" : undefined}
+                  className="field field-mono mt-2"
                 />
                 {link.demoAddress && !address.trim() && (
                   <button
                     type="button"
-                    className="mt-3 text-sm font-extrabold underline decoration-2 underline-offset-4"
+                    className="mt-2 inline-flex min-h-6 items-center py-1 text-sm font-extrabold underline decoration-2 underline-offset-4"
                     onClick={() => setAddress(link.demoAddress!)}
                   >
                     Testing? Use a demo address
                   </button>
                 )}
-                {refusal && <p role="alert" className="mt-3 font-bold leading-snug text-refuse">{refusal}</p>}
-                <div className="mt-6 flex items-center gap-5">
-                  <Coin broken={phase === "claiming"} disabled={!ready} onPress={claim} label={`Claim ${zec(link.zats)} ZEC`} />
-                  <div className="min-w-0 flex-1">
-                    <button type="submit" disabled={!ready || phase === "claiming"} className="pill pill-ink w-full">
-                      {busy ? "Checking address…" : "Claim payment"}
-                    </button>
-                    <p className="mt-2 text-sm leading-snug text-ink-soft">Sent privately. Cachet deletes your address once it's paid.</p>
-                  </div>
-                </div>
+                {refusal && <p id="address-error" className="mt-3 text-pretty font-bold leading-snug text-refuse">{refusal}</p>}
+                <button type="submit" disabled={busy || phase === "claiming"} className="pill pill-ink mt-6 w-full">
+                  {busy ? "Checking address…" : "Claim payment"}
+                </button>
+                <p className="mt-3 text-pretty text-center text-sm leading-snug text-ink-soft">Sent privately. Cachet deletes your address once it's paid.</p>
               </form>
             )}
           </motion.section>

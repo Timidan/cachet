@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { admin, day, FEE_ZATS, short, zec, type Batch, type Status, type Treasury } from "./api";
+import { CircleAlert } from "lucide-react";
 import { CoinMark } from "./Coin";
 
 const KEY = "cachet-access-key";
@@ -10,6 +11,8 @@ const WORD: Record<Status, string> = { sealed: "unclaimed", queued: "sending", s
 const MARK = { sealed: "sealed", queued: "travelling", sent: "travelling", delivered: "delivered", expired: "expired" } as const;
 
 const field = "field mt-2";
+// Big balances read better at four decimals; small sums keep full precision so nothing rounds away.
+const balance = (zats: number) => zec(zats, zats >= 1e8 ? 4 : 8);
 
 export function Dashboard() {
   const [key, setKey] = useState(stored);
@@ -48,23 +51,33 @@ export function Dashboard() {
           Sign out
         </button>
       </nav>
-      {error && <p role="alert" className="mb-6 font-bold text-refuse">{error}</p>}
+      <main id="main">
+      <h1 className="sr-only">Dashboard</h1>
+      {error && (
+        <p role="alert" className="mb-6 flex items-center gap-2 rounded-2xl border-[3px] border-ink bg-cream px-4 py-3 font-bold">
+          <CircleAlert className="size-5 shrink-0 text-refuse" strokeWidth={2.5} aria-hidden />
+          {error}
+        </p>
+      )}
 
       {treasury && (
         <section className="card grid gap-6 p-7 sm:grid-cols-3">
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-ink-soft">Treasury balance</p>
-            <p className="sticker-flat mt-1 text-[2.2rem] leading-none">{zec(treasury.spendable)} ZEC</p>
+            <p className="sticker-flat mt-1 whitespace-nowrap text-[clamp(1.7rem,3.2vw,2.2rem)] leading-none">{balance(treasury.spendable)} ZEC</p>
           </div>
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-ink-soft">Reserved for unclaimed links</p>
-            <p className="sticker-flat mt-1 text-[2.2rem] leading-none">{zec(treasury.reserved)} ZEC</p>
+            <p className="sticker-flat mt-1 whitespace-nowrap text-[clamp(1.7rem,3.2vw,2.2rem)] leading-none">{balance(treasury.reserved)} ZEC</p>
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-black uppercase tracking-wide text-ink-soft">Add funds ({treasury.network === "main" ? "mainnet" : treasury.network})</p>
+            <p className="text-sm font-black uppercase tracking-wide text-ink-soft">
+              Add funds
+              {treasury.network !== "main" && <span className="ml-2 rounded-full border-2 border-ink px-2 py-px text-xs normal-case tracking-normal text-ink">Test network</span>}
+            </p>
             <p className="mt-2 font-mono text-sm">
               {short(treasury.address, 14, 8)}{" "}
-              <button type="button" className="ml-2 font-extrabold underline decoration-2 underline-offset-4" onClick={() => navigator.clipboard.writeText(treasury.address)}>
+              <button type="button" aria-label="Copy funding address" className="ml-2 inline-flex min-h-6 items-center py-1 font-extrabold underline decoration-2 underline-offset-4" onClick={() => navigator.clipboard.writeText(treasury.address)}>
                 Copy
               </button>
             </p>
@@ -77,9 +90,15 @@ export function Dashboard() {
         <div className="space-y-6">
           {fresh && <Fresh {...fresh} onDone={() => setFresh(null)} />}
           {batches.map((b) => <BatchCard key={b.id} batch={b} />)}
-          {!batches.length && !fresh && <p className="font-bold text-ink-soft">Your payout batches will appear here.</p>}
+          {!batches.length && !fresh && (
+            <div className="card p-[7%]">
+              <h2 className="sticker-flat text-[1.8rem] leading-tight">No payout links yet</h2>
+              <p className="mt-2 text-pretty font-bold text-ink-soft">Fill in the form to create your first batch. Each person gets their own link.</p>
+            </div>
+          )}
         </div>
       </div>
+      </main>
     </div>
   );
 }
@@ -127,19 +146,19 @@ function Create({ accessKey, onCreated }: { accessKey: string; onCreated: (label
 
   return (
     <form onSubmit={create} className="card p-[8%]">
-      <h2 className="sticker text-[2.4rem] leading-none">Create payout links</h2>
+      <h2 className="sticker text-balance text-[2.4rem] leading-none">Create payout links</h2>
       <div className="mt-6 space-y-5">
         <label className="block"><span className="font-extrabold">Name</span><input className={field} value={f.label} onChange={set("label")} placeholder="October bounties" required /></label>
         <label className="block"><span className="font-extrabold">From (shown to recipients)</span><input className={field} value={f.sender} onChange={set("sender")} placeholder="ZecHub" required /></label>
         <label className="block"><span className="font-extrabold">Message (sent with the payment)</span><input className={field} value={f.note} onChange={set("note")} placeholder="Thanks for the wiki fixes" maxLength={200} /></label>
-        <div className="grid grid-cols-3 gap-4 max-sm:grid-cols-1">
-          <label className="block"><span className="font-extrabold">ZEC per link</span><input className={field} value={f.amount} onChange={set("amount")} inputMode="decimal" /></label>
-          <label className="block"><span className="font-extrabold">Links</span><input className={field} value={f.count} onChange={set("count")} inputMode="numeric" /></label>
-          <label className="block"><span className="font-extrabold">Expires in (days)</span><input className={field} value={f.days} onChange={set("days")} inputMode="numeric" /></label>
+        <div className="grid grid-cols-3 items-end gap-4 max-sm:grid-cols-1">
+          <label className="block"><span className="font-extrabold">ZEC per link</span><input className={`${field} field-mono`} value={f.amount} onChange={set("amount")} inputMode="decimal" /></label>
+          <label className="block"><span className="font-extrabold">Links</span><input className={`${field} field-mono`} value={f.count} onChange={set("count")} inputMode="numeric" /></label>
+          <label className="block"><span className="font-extrabold">Days valid</span><input className={`${field} field-mono`} value={f.days} onChange={set("days")} inputMode="numeric" /></label>
         </div>
       </div>
-      <p className="mt-6 font-mono text-sm text-ink-soft">
-        Up to {zec((zats + FEE_ZATS) * count)} ZEC, network fees included, leaves your treasury, and only as links are claimed.
+      <p className="mt-6 text-pretty text-sm text-ink-soft">
+        Up to <span className="font-mono font-medium text-ink">{zec((zats + FEE_ZATS) * count)} ZEC</span>, network fees included, leaves your treasury, and only as links are claimed.
       </p>
       {error && <p role="alert" className="mt-3 text-refuse">{error}</p>}
       <button type="submit" disabled={busy} className="pill pill-ink mt-6">
@@ -153,7 +172,7 @@ function Fresh({ label, links, onDone }: { label: string; links: string[]; onDon
   const csv = `link\n${links.join("\n")}\n`;
   return (
     <section className="card p-[7%]">
-      <h2 className="sticker text-[2.2rem] leading-none">Your links are ready</h2>
+      <h2 className="sticker text-balance text-[2.2rem] leading-none">Your links are ready</h2>
       <p className="mt-2 font-bold leading-snug text-ink-soft">Save them now. For privacy, Cachet stores only a fingerprint of each link and can't show them again.</p>
       <ol className="mt-5 max-h-64 space-y-1 overflow-y-auto font-mono text-sm">
         {links.map((l) => <li key={l} className="truncate">{l}</li>)}
@@ -172,10 +191,12 @@ function BatchCard({ batch: b }: { batch: Batch }) {
   return (
     <article className="card p-[6%]">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="sticker-flat text-[1.8rem] leading-tight">{b.label}</h3>
+        <h3 className="sticker-flat text-balance text-[1.8rem] leading-tight">{b.label}</h3>
         <span className="font-mono text-sm text-ink-soft">{zec(b.zats)} ZEC × {b.links.length}</span>
       </header>
-      <p className="mt-1 text-sm font-bold text-ink-soft">From {b.sender} · created {day(b.createdAt)} · expires {day(b.expiresAt)}</p>
+      <p className="mt-1 text-sm font-bold text-ink-soft">
+        From {b.sender} · <span className="whitespace-nowrap">created {day(b.createdAt)}</span> · <span className="whitespace-nowrap">expires {day(b.expiresAt)}</span>
+      </p>
       <ul className="mt-5 flex flex-wrap gap-1.5" aria-label="Links in this batch">
         {b.links.map((l) => (
           <li key={l.n} title={`Link ${l.n}: ${WORD[l.status]}${l.txid ? ` · ${short(l.txid)}` : ""}`}>

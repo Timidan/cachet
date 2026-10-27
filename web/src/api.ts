@@ -16,7 +16,7 @@ export type Treasury = { network: Network; address: string; spendable: number; r
 export const PREFIX: Record<Network, string> = { main: "u1", test: "utest1", regtest: "uregtest1" };
 export const FEE_ZATS = 10_000; // ZIP-317 fee for one shielded payout
 
-export const zec = (zats: number) => (zats / 1e8).toFixed(8).replace(/0+$/, "").replace(/\.$/, "");
+export const zec = (zats: number, decimals = 8) => (zats / 1e8).toFixed(decimals).replace(/0+$/, "").replace(/\.$/, "");
 export const short = (s: string, head = 10, tail = 6) => (s.length > head + tail + 1 ? `${s.slice(0, head)}…${s.slice(-tail)}` : s);
 export const day = (at: number) => new Date(at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
 

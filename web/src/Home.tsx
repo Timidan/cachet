@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Clock, Link2, Lock, ShieldCheck, Sparkle, Wallet } from "lucide-react";
+import { ArrowRight, CircleAlert, Clock, Link2, Lock, ShieldCheck, Sparkle, Wallet } from "lucide-react";
 import { Receipt } from "./Receipt";
 import { health, sampleLink, type LinkView } from "./api";
 
@@ -55,6 +55,7 @@ export function Home() {
 
   return (
     <div className="overflow-x-hidden">
+      <a href="#main" className="pill pill-ink sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50">Skip to content</a>
       <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
         <a href="/" className="flex items-center gap-2.5">
           <img src="/art/play/coin.webp" alt="" className="size-11" />
@@ -67,10 +68,11 @@ export function Home() {
         <a href="/dashboard" className="pill pill-ink">Dashboard</a>
       </nav>
 
+      <main id="main">
       <section className="mx-auto grid max-w-7xl items-center gap-4 px-5 pb-10 pt-2 sm:px-8 lg:grid-cols-[1.15fr_1fr]">
         <div className="relative z-10">
-          <h1 className="sticker text-[clamp(3.5rem,10vw,7.4rem)] leading-[0.9]">Pay anyone with a link.</h1>
-          <p className="mt-7 max-w-xl text-[clamp(1.25rem,2.4vw,1.6rem)] font-bold leading-snug">
+          <h1 className="sticker text-balance text-[clamp(3.5rem,10vw,7.4rem)] leading-[0.92]">Pay anyone with a link.</h1>
+          <p className="mt-7 max-w-xl text-pretty text-[clamp(1.25rem,2.4vw,1.6rem)] font-bold leading-[1.45]">
             Your ZEC stays in your treasury until they claim it, then arrives shielded. No addresses to collect.
           </p>
           <div className="mt-9 flex flex-wrap gap-4">
@@ -81,7 +83,12 @@ export function Home() {
             )}
             <a href="/dashboard" className={`pill ${sample ? "pill-line" : "pill-ink"}`}>Create payout links</a>
           </div>
-          {sampleError && <p role="alert" className="mt-4 font-bold text-refuse">{sampleError}</p>}
+          {sampleError && (
+            <p role="alert" className="mt-5 inline-flex items-center gap-2 rounded-2xl border-[3px] border-ink bg-cream px-4 py-2 font-bold">
+              <CircleAlert className="size-5 shrink-0 text-refuse" strokeWidth={2.5} aria-hidden />
+              {sampleError}
+            </p>
+          )}
         </div>
         <div className="relative mx-auto w-full max-w-[580px]">
           <img src="/art/play/mascot-hold.webp" alt="Cachet's mascot, a seal, holding a gold coin" className="relative w-full" />
@@ -95,25 +102,25 @@ export function Home() {
       <Ticker />
 
       <section id="how" className="mx-auto max-w-7xl scroll-mt-6 px-5 py-20 sm:px-8">
-        <h2 className="sticker text-[clamp(2.6rem,6vw,4.2rem)] leading-none">How it works</h2>
+        <h2 className="sticker text-balance text-[clamp(2.6rem,6vw,4.2rem)] leading-none">How it works</h2>
         <ol className="mt-10 grid gap-10 md:grid-cols-3">
           {STEPS.map(([title, body], i) => (
             <li key={title}>
               <span className="sticker text-[4.6rem] leading-none">{i + 1}</span>
               <h3 className="mt-2 text-2xl font-black">{title}</h3>
-              <p className="mt-2 text-lg leading-snug">{body}</p>
+              <p className="mt-2 text-pretty text-lg leading-snug">{body}</p>
             </li>
           ))}
         </ol>
 
         <div className="mt-20 grid items-start gap-12 lg:grid-cols-2">
           <figure>
-            <Receipt link={SAMPLE} address={SAMPLE_ADDRESS} />
+            <Receipt link={SAMPLE} address={SAMPLE_ADDRESS} level="h3" />
             <figcaption className="mt-4 text-center font-extrabold text-ink-soft">A real payout, made with Cachet on its test network</figcaption>
           </figure>
           <div id="compare" className="card scroll-mt-6 p-[clamp(1.5rem,4vw,2.5rem)]">
-            <h2 className="sticker text-[clamp(2.2rem,5vw,3rem)] leading-none">Why not a gift card?</h2>
-            <p className="mt-3 text-lg font-bold">For a gift, use your wallet. To pay people from a treasury, use Cachet.</p>
+            <h2 className="sticker text-balance text-[clamp(2.2rem,5vw,3rem)] leading-none">Why not a gift card?</h2>
+            <p className="mt-3 text-pretty text-lg font-bold">For a gift, use your wallet. To pay people from a treasury, use Cachet.</p>
             <div className="mt-6 overflow-x-auto">
               <table className="w-full min-w-[420px] border-collapse text-left">
                 <thead>
@@ -147,8 +154,8 @@ export function Home() {
       <section id="under-the-hood" className="mx-auto max-w-7xl scroll-mt-6 px-5 pb-20 sm:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="sticker text-[clamp(2.6rem,6vw,4.2rem)] leading-none">Under the hood</h2>
-            <p className="mt-3 max-w-2xl text-lg font-bold">
+            <h2 className="sticker text-balance text-[clamp(2.6rem,6vw,4.2rem)] leading-none">Under the hood</h2>
+            <p className="mt-3 max-w-2xl text-pretty text-lg font-bold">
               Pick a link, choose a shielded or a transparent address, and watch what Cachet does with each.
             </p>
           </div>
@@ -164,6 +171,7 @@ export function Home() {
           />
         </div>
       </section>
+      </main>
 
       <footer className="mx-auto flex max-w-7xl flex-wrap justify-between gap-3 border-t-[3px] border-ink px-5 py-8 font-extrabold sm:px-8">
         <span>Built for Zecathon 2026</span>

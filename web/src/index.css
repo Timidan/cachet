@@ -9,13 +9,13 @@
   --font-sticker: "Lilita One", "Arial Rounded MT Bold", system-ui, sans-serif;
   --font-body: "Nunito Variable", "Nunito", system-ui, sans-serif;
   --font-mono: "DM Mono", ui-monospace, monospace;
-  --color-sun: #f8c21c;
-  --color-sun-soft: #ffe37d;
-  --color-cream: #fffdf5;
-  --color-ink: #111111;
-  --color-ink-soft: #4d4636;
-  --color-refuse: #d93a33;
-  --color-ok: #1b8a4b;
+  --color-sun: oklch(0.839 0.167 87.578);
+  --color-sun-soft: oklch(0.918 0.126 94.386);
+  --color-cream: oklch(0.993 0.011 95.159);
+  --color-ink: oklch(0.178 0 0);
+  --color-ink-soft: oklch(0.396 0.027 87.152);
+  --color-hint: oklch(0.54 0.029 87.893); /* placeholders: 5.05:1 on white */
+  --color-refuse: oklch(0.542 0.186 27.714); /* errors only: 5.42:1 on cream */
 }
 
 html { background: var(--color-sun); }
@@ -55,15 +55,16 @@ body {
 .pill-ink { background: var(--color-ink); color: #fff; }
 .pill-line { background: transparent; color: var(--color-ink); }
 .pill:not(:disabled):hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--color-ink); }
-.pill:not(:disabled):active { transform: none; box-shadow: none; }
+.pill:not(:disabled):active { transform: scale(0.96); box-shadow: none; }
 .pill:disabled { opacity: 0.55; }
 
 .field {
   width: 100%; border: 3px solid var(--color-ink); border-radius: 9999px; background: #fff;
-  padding: 0.85rem 1.25rem; font-family: var(--font-mono); font-size: 1rem; color: var(--color-ink); outline: none;
+  padding: 0.85rem 1.25rem; font-family: var(--font-body); font-weight: 600; font-size: 1rem; color: var(--color-ink); outline: none;
 }
+.field-mono { font-family: var(--font-mono); font-weight: 400; } /* addresses and numbers only */
 .field:focus { box-shadow: 4px 4px 0 var(--color-ink); }
-.field::placeholder { color: #8a826f; }
+.field::placeholder { color: var(--color-hint); }
 
 /* Doodles wobble a little, the way stickers would. */
 @keyframes wobble { 0%, 100% { transform: rotate(-7deg) scale(1) } 50% { transform: rotate(7deg) scale(1.07) } }
@@ -73,7 +74,7 @@ body {
 @keyframes drift { from { transform: translateX(0) } to { transform: translateX(-50%) } }
 .drift { animation: drift 28s linear infinite; }
 
-/* A coin that is ready to crack glows. */
+/* A coin whose payment is ready to claim glows. */
 .coin-ready::after {
   content: ""; position: absolute; inset: -8%; border-radius: 9999px; pointer-events: none;
   animation: warm 2.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;

@@ -230,7 +230,7 @@ export function start(port = Number(process.env.PORT ?? 3000)) {
       if ((m = path.match(new RegExp(`^/api/link/${TOKEN}/claim$`))) && req.method === "POST") return claim(m[1], req);
       if (path === "/api/sample" && req.method === "POST") return sampleLink();
       if (path.startsWith("/api/admin/")) {
-        if (!admin(req)) return fail(401, "That access key isn't right.");
+        if (!admin(req)) return fail(401, "That access key doesn't match. Check it and try again.");
         if (path === "/api/admin/batches") return req.method === "POST" ? createBatch(req) : json(batches());
         if (path === "/api/admin/treasury") return json(await treasury());
       }
