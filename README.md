@@ -1,20 +1,20 @@
 # Cachet
 
-Pay anyone with a sealed link: the ZEC stays in your treasury until they open it, then arrives shielded.
+Pay anyone with a link: your ZEC stays in your treasury until they claim it, then arrives shielded.
 
 [Live demo](#try-it-in-60-seconds) · [Video](#) · [Evidence](#evidence) · [How it works](#how-it-works)
 
-![Before and after: a sealed Cachet letter with a gold wax seal, and a delivered one showing 0.0002 ZEC, its memo, the block and the transaction id](docs/screens/hero.png)
+![Cachet's claim page before and after: the seal mascot offers a gold seal-coin; once tapped, the receipt shows 0.0002 ZEC delivered with its block and transaction id](docs/screens/hero.png)
 
-Hackathons, bounty programs and grant rounds pay people they barely know. Today they collect everyone's name and address in a form or a Telegram chat first, and that list outlives the payment. Cachet skips the list: the organiser seals a link, the recipient opens it and gives a shielded address once, and the payment arrives in Zcash's Ironwood pool with the organiser's note as an encrypted memo. Cachet deletes the address as soon as the block confirms the payment.
+Hackathons, bounty programs and grant rounds pay people they barely know. Today they collect everyone's name and address in a form or a Telegram chat first, and that list outlives the payment. Cachet skips the list: the organiser creates a link, the recipient claims it with a shielded address, and the payment arrives in Zcash's Ironwood pool with the organiser's note as an encrypted memo. Cachet deletes the address as soon as the block confirms the payment.
 
 ## How it works
 
-1. **Seal a batch.** On the desk, the organiser sets an amount, a note and an expiry, and gets one link per recipient. Nothing moves on-chain yet.
+1. **Create links.** In the dashboard, the organiser sets an amount, a message and an expiry, and gets one link per recipient. Nothing moves on-chain yet.
 2. **Send the links** over email, Signal or any channel. Cachet keeps only a SHA-256 fingerprint of each link, so it can't show them again.
-3. **Break the seal.** The recipient opens their link, pastes a unified address and presses the wax seal. Transparent and Sapling-only addresses are refused before any payment is built: a payment to them would be public.
+3. **Claim.** The recipient opens their link, pastes a unified address and presses Claim. Transparent and Sapling-only addresses are refused before any payment is built: a payment to them would be public.
 4. **Pay shielded.** Cachet's worker pays the address from the treasury in the Ironwood pool, with the note as a memo encrypted to the recipient.
-5. **Forget.** When the block lands, the letter shows the transaction id and Cachet sets the stored address to empty. A link nobody opens expires, and its money never left the treasury.
+5. **Forget.** When the block lands, the receipt shows the transaction id and Cachet sets the stored address to empty. A link nobody opens expires, and its money never left the treasury.
 
 ## Why not a wallet gift card?
 
@@ -22,8 +22,8 @@ Zodl and Vizor already ship Zcash gift cards, and for a gift they are the right 
 
 | | Wallet gift cards | Cachet |
 |---|---|---|
-| The money moves | when you make the card | when they open the link |
-| If nobody opens it | the money waits in the card | the money never left your treasury |
+| The money moves | when you make the card | when they claim the link |
+| If it's never claimed | the money waits in the card | it never leaves your treasury |
 | How many at once | four cards per batch in Vizor | up to 200 links per batch |
 | To receive | a wallet that redeems gift cards | any shielded address |
 
@@ -56,14 +56,14 @@ Tests: `bun test lib` checks the address policy (a unified address is paid; a tr
 
 ## Try it in 60 seconds
 
-On the live demo, press **Open a sample letter**, then **Use Cachet's demo wallet**, then the seal. The payment is a real shielded transaction on the regtest chain; the demo wallet is Cachet's own, because nobody has a wallet on a private test chain. The letter shows the block and transaction id when it lands.
+On the live demo, press **Try a demo payout**, then **Testing? Use a demo address**, then **Claim payment**. The payment is a real shielded transaction on the regtest chain; the demo wallet is Cachet's own, because nobody has a wallet on a private test chain. The receipt shows the block and transaction id when it lands.
 
 ## Privacy model and limits
 
 - **On-chain**, a Cachet payout is an ordinary shielded transaction: the amount, the treasury and the recipient are hidden. It looks the same as paying someone directly from a shielded wallet.
 - **What Cachet removes** is the list: no form or chat holds names next to addresses, and the server keeps each address only between the claim and the block.
 - **What Cachet's server sees**: the address while it pays it, and the request like any web server. Cachet itself doesn't log IP addresses; run it behind a proxy that doesn't either, or open links over Tor.
-- **Links are bearer links.** Whoever holds a link can claim it, so send them privately. They expire.
+- **Links work like cash.** Whoever holds a link can claim it, so send them privately. They expire.
 - **The treasury is a hot wallet** on the organiser's server. Keep only what you plan to pay out.
 - **zcash-devtool is a developer tool**, not a hardened production wallet.
 - The demo runs on **regtest** with NU6.3 (Ironwood) rules, the rules mainnet runs today. NU7 is active on public testnet but not yet on mainnet.

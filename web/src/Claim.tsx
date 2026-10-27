@@ -1,23 +1,44 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { claimLink, day, getLink, PREFIX, zec, type LinkView } from "./api";
-import { Letter } from "./Letter";
-import { EASE, Seal } from "./Seal";
-import { Postmark, Stamp } from "./Stamp";
+import { Coin, EASE } from "./Coin";
+import { Receipt } from "./Receipt";
 
-type Phase = "loading" | "missing" | "envelope" | "opening" | "letter";
+type Phase = "loading" | "missing" | "link" | "claiming" | "receipt";
+type Pose = "offer" | "no" | "hold" | "cheer" | "sleep";
 const retry = (error: string) => `The payment didn't go through (${error}). Your link still works, so try again.`;
 
-export function Stage({ children }: { children?: React.ReactNode }) {
-  return <main className="mx-auto grid min-h-dvh w-full max-w-[600px] place-items-center px-4 py-12">{children}</main>;
+/** The seal mascot, reacting to what is happening to the payment. */
+export function Mascot({ pose, className = "" }: { pose: Pose; className?: string }) {
+  const reduce = useReducedMotion();
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.img
+        key={pose}
+        src={`/art/play/mascot-${pose}.webp`}
+        alt=""
+        draggable={false}
+        className={`pointer-events-none select-none ${className}`}
+        initial={reduce ? false : { scale: 0.8, y: 18, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={reduce ? undefined : { scale: 0.9, y: 10, opacity: 0 }}
+        transition={{ duration: 0.45, ease: EASE }}
+      />
+    </AnimatePresence>
+  );
 }
 
-export function Notice({ title, children }: { title: string; children: React.ReactNode }) {
+export function Stage({ pose, children }: { pose: Pose; children?: React.ReactNode }) {
   return (
-    <section className="paper w-full rounded-[3px] px-[8%] py-[9%]">
-      <h1 className="text-[2.4rem] leading-none">{title}</h1>
-      <div className="mt-4 text-[1.15rem] leading-relaxed">{children}</div>
-    </section>
+    <main className="mx-auto flex min-h-dvh w-full max-w-[540px] flex-col items-center px-4 pb-12 pt-6">
+      <a href="/" className="sticker text-3xl">Cachet</a>
+      <div className="relative mt-2 w-full">
+        <div className="relative z-10 -mb-[clamp(2.5rem,9vw,3.5rem)] flex justify-center">
+          <Mascot pose={pose} className="w-[min(58vw,250px)]" />
+        </div>
+        {children}
+      </div>
+    </main>
   );
 }
 
@@ -34,184 +55,134 @@ export function Claim({ token }: { token: string }) {
       .then((l) => {
         if (!l) return setPhase("missing");
         setLink(l);
-        setPhase(l.status === "sealed" || l.status === "expired" ? "envelope" : "letter");
+        setPhase(l.status === "sealed" || l.status === "expired" ? "link" : "receipt");
         if (l.status === "sealed" && l.error) setRefusal(retry(l.error));
       })
       .catch(() => setPhase("missing"));
   }, [token]);
 
-  // While the payment waits for its block, check on it quietly.
-  const travelling = link?.status === "queued" || link?.status === "sent";
+  // While the payment confirms, check on it quietly.
+  const sending = link?.status === "queued" || link?.status === "sent";
   useEffect(() => {
-    if (!travelling) return;
+    if (!sending) return;
     const t = setInterval(() => {
       getLink(token)
         .then((l) => {
           if (!l) return;
           setLink(l);
-          // The payout failed and the link was released: hand the envelope back.
+          // The payout failed and the link was released: let them try again.
           if (l.status === "sealed") {
-            setPhase("envelope");
+            setPhase("link");
             setRefusal(l.error ? retry(l.error) : null);
           }
         })
         .catch(() => {});
     }, 2000);
     return () => clearInterval(t);
-  }, [travelling, token]);
+  }, [sending, token]);
 
-  async function open() {
+  async function claim() {
     const a = address.trim();
     if (!a || busy) return;
     setBusy(true);
     setRefusal(null);
     try {
       setLink(await claimLink(token, a));
-      setPhase("opening");
-      setTimeout(() => setPhase("letter"), reduce ? 0 : 1300);
+      setPhase("claiming");
+      setTimeout(() => setPhase("receipt"), reduce ? 0 : 1100);
     } catch (e) {
       const err = e as Error & { body?: Partial<LinkView> };
-      if (err.body?.status) setLink(err.body as LinkView); // opened elsewhere, or expired meanwhile
+      if (err.body?.status) setLink(err.body as LinkView); // claimed elsewhere, or expired meanwhile
       setRefusal(err.message);
     } finally {
       setBusy(false);
     }
   }
 
-  if (phase === "loading") return <Stage />;
+  if (phase === "loading") return <main className="min-h-dvh" />;
   if (phase === "missing" || !link)
     return (
-      <Stage>
-        <Notice title="No letter here.">This link doesn't exist, or part of it is missing.</Notice>
+      <Stage pose="no">
+        <section className="card w-full px-[7%] pb-[7%] pt-[clamp(3.5rem,12vw,4.5rem)]">
+          <h1 className="sticker text-[2.6rem] leading-none">Link not found</h1>
+          <p className="mt-3 text-lg">Check that you copied the whole link.</p>
+        </section>
       </Stage>
     );
 
-  return (
-    <Stage>
-      <div className="relative w-full" style={{ perspective: 1600 }}>
-        <AnimatePresence mode="popLayout">
-          {phase !== "letter" && (
-            <Envelope
-              key="envelope"
-              link={link}
-              address={address}
-              setAddress={setAddress}
-              refusal={refusal}
-              busy={busy}
-              opening={phase === "opening"}
-              onOpen={open}
-            />
-          )}
-          {phase === "letter" && (
-            <motion.div
-              key="letter"
-              initial={reduce ? false : { y: 110, opacity: 0, rotate: -1.6 }}
-              animate={{ y: 0, opacity: 1, rotate: 0 }}
-              transition={{ duration: 1.05, ease: EASE }}
-            >
-              <Letter link={link} address={address.trim() || undefined} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </Stage>
-  );
-}
-
-function Envelope({ link, address, setAddress, refusal, busy, opening, onOpen }: {
-  link: LinkView; address: string; setAddress: (a: string) => void; refusal: string | null;
-  busy: boolean; opening: boolean; onOpen: () => void;
-}) {
-  const reduce = useReducedMotion();
   const expired = link.status === "expired";
-  const ready = address.trim().length > 0;
-  return (
-    <motion.section
-      className="paper w-full rounded-[3px]"
-      exit={reduce ? { opacity: 0 } : { y: 160, opacity: 0, transition: { duration: 0.75, ease: EASE } }}
-    >
-      {/* The flap folds down over the face and lifts open once the seal breaks. */}
-      <div className="relative aspect-[600/250] w-full" style={{ transformStyle: "preserve-3d" }}>
-        <motion.svg
-          viewBox="0 0 600 250"
-          preserveAspectRatio="none"
-          className="absolute inset-0 h-full w-full origin-top"
-          initial={false}
-          animate={{ rotateX: opening ? 172 : 0 }}
-          transition={{ duration: reduce ? 0 : 0.85, ease: EASE, delay: reduce ? 0 : 0.3 }}
-          aria-hidden
-        >
-          <path d="M0 0H600L300 244Z" fill="#ddcfb1" />
-          <path d="M0 0L300 244L600 0" fill="none" stroke="rgba(37,28,19,.22)" strokeWidth="1.5" />
-        </motion.svg>
-        <div className="absolute right-[4%] top-[9%] flex items-start">
-          <div className="-mr-7 mt-7 -rotate-6 max-sm:hidden">
-            <Postmark at={link.createdAt} />
-          </div>
-          <Stamp zats={link.zats} network={link.network} />
-        </div>
-        <div className="absolute bottom-0 left-1/2 z-10 -translate-x-1/2 translate-y-1/2">
-          <Seal
-            monogram={(link.sender.trim()[0] ?? "C").toUpperCase()}
-            broken={opening}
-            disabled={expired || busy || !ready}
-            onPress={onOpen}
-            label={`Break the seal and receive ${zec(link.zats)} ZEC from ${link.sender}`}
-          />
-        </div>
-      </div>
+  const ready = address.trim().length > 0 && !busy;
+  const pose: Pose =
+    phase === "receipt" ? (link.status === "delivered" ? "cheer" : "hold") : expired ? "sleep" : refusal ? "no" : "offer";
 
-      <div className="px-[8%] pb-[8%] pt-[clamp(66px,17vw,86px)]">
-        <p className="sc text-ink-soft">From {link.sender}</p>
-        {link.note && <p className="mt-1 text-[1.45rem] italic leading-snug">{link.note}</p>}
-        {expired ? (
-          <div className="mt-7">
-            <span className="sc inline-block -rotate-3 border-2 border-ink-soft/70 px-3 py-1 text-ink-soft">Returned to sender</span>
-            <p className="mt-4 text-[1.1rem] leading-relaxed">
-              This link expired on {day(link.expiresAt)}. The money never left {link.sender}.
-            </p>
-          </div>
+  return (
+    <Stage pose={pose}>
+      <AnimatePresence mode="popLayout" initial={false}>
+        {phase === "receipt" ? (
+          <motion.div key="receipt" initial={reduce ? false : { y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.7, ease: EASE }}>
+            <Receipt link={link} address={address.trim() || undefined} />
+          </motion.div>
         ) : (
-          <form
-            className="mt-7"
-            onSubmit={(e) => {
-              e.preventDefault();
-              onOpen();
-            }}
+          <motion.section
+            key="link"
+            className="card w-full px-[7%] pb-[7%] pt-[clamp(3.5rem,12vw,4.5rem)]"
+            exit={reduce ? { opacity: 0 } : { y: 40, opacity: 0, transition: { duration: 0.5, ease: EASE } }}
           >
-            <label htmlFor="deliver-to" className="sc text-ink-soft">Deliver to</label>
-            <input
-              id="deliver-to"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder={`${PREFIX[link.network]}…`}
-              autoComplete="off"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              enterKeyHint="send"
-              disabled={busy || opening}
-              className="type mt-1 w-full border-0 border-b border-dashed border-rule bg-transparent py-2 text-base text-ink outline-none placeholder:text-ink-soft/55 focus:border-ink"
-            />
-            {link.demoAddress && !ready && (
-              <button
-                type="button"
-                className="sc mt-3 block text-sm text-ink underline decoration-rule underline-offset-4"
-                onClick={() => setAddress(link.demoAddress!)}
-              >
-                No wallet on this test chain? Use Cachet's demo wallet
-              </button>
-            )}
-            {refusal ? (
-              <p role="alert" className="mt-3 leading-snug text-refuse">{refusal}</p>
+            <p className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">{link.sender} sent you</p>
+            <p className="sticker mt-1 text-[clamp(2.8rem,11vw,4rem)] leading-none">{zec(link.zats)} ZEC</p>
+            {link.note && <p className="mt-2 text-xl">{link.note}</p>}
+
+            {expired ? (
+              <div className="mt-6 rounded-[20px] border-[3px] border-dashed border-ink/40 p-5">
+                <p className="text-lg font-extrabold">This link expired on {day(link.expiresAt)}.</p>
+                <p className="mt-1">The payment was never sent. Ask {link.sender} for a new link.</p>
+              </div>
             ) : (
-              <p className="sc mt-3 text-sm text-ink-soft" aria-live="polite">
-                {busy ? "Checking the address…" : ready ? "Now break the seal." : "Paste a shielded address, then break the seal."}
-              </p>
+              <form
+                className="mt-6"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  claim();
+                }}
+              >
+                <label htmlFor="address" className="font-extrabold">Your shielded Zcash address</label>
+                <input
+                  id="address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder={`${PREFIX[link.network]}…`}
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  enterKeyHint="send"
+                  disabled={busy || phase === "claiming"}
+                  className="field mt-2"
+                />
+                {link.demoAddress && !address.trim() && (
+                  <button
+                    type="button"
+                    className="mt-3 text-sm font-extrabold underline decoration-2 underline-offset-4"
+                    onClick={() => setAddress(link.demoAddress!)}
+                  >
+                    Testing? Use a demo address
+                  </button>
+                )}
+                {refusal && <p role="alert" className="mt-3 font-bold leading-snug text-refuse">{refusal}</p>}
+                <div className="mt-6 flex items-center gap-5">
+                  <Coin broken={phase === "claiming"} disabled={!ready} onPress={claim} label={`Claim ${zec(link.zats)} ZEC`} />
+                  <div className="min-w-0 flex-1">
+                    <button type="submit" disabled={!ready || phase === "claiming"} className="pill pill-ink w-full">
+                      {busy ? "Checking address…" : "Claim payment"}
+                    </button>
+                    <p className="mt-2 text-sm leading-snug text-ink-soft">Sent privately. Cachet deletes your address once it's paid.</p>
+                  </div>
+                </div>
+              </form>
             )}
-          </form>
+          </motion.section>
         )}
-      </div>
-    </motion.section>
+      </AnimatePresence>
+    </Stage>
   );
 }

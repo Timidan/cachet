@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Letter } from "./Letter";
-import { health, sampleLetter, type LinkView } from "./api";
+import { ArrowRight, Clock, Link2, Lock, ShieldCheck, Sparkle, Wallet } from "lucide-react";
+import { Receipt } from "./Receipt";
+import { health, sampleLink, type LinkView } from "./api";
 
 // A real payout made through Cachet's API on its regtest chain (block 233).
 const SAMPLE: LinkView = {
@@ -8,88 +9,144 @@ const SAMPLE: LinkView = {
   createdAt: 1793057700000, expiresAt: 1793662524675, height: 233, deliveredAt: 1793057737638, error: null, demoAddress: null,
   txid: "72e7f8083940d57014bc4e8cb14e869a9a056379d9de959a31014016b92a1ba0",
 };
+const SAMPLE_ADDRESS =
+  "uregtest150swjtm94ljj7mf59v3k8cqtfh6a2qj6ee5s5kzlyatgxzganezypnlgxvzl46qv3ce9yr95h9359frty85ctc04t2zjqv9p8cyll7raqjhdf7gxtkkjv9qegk7gwy2wvedsq4szh00l0n4nu6excsatplf7n24wf3t4mw4hs5wf0hz93gjtftmfn64lqkyvzhuluwv5dw69kmmmpdz";
+
+const TICKER = [
+  [ShieldCheck, "Shielded"], [Lock, "No address lists"], [Clock, "Links expire"], [Wallet, "Any wallet"],
+] as const;
+
+const STEPS = [
+  ["Create links", "Choose an amount and a message. You get one link per person, and nothing moves on-chain yet."],
+  ["Send them", "By email, Signal or chat. Cachet stores only a fingerprint of each link."],
+  ["They claim", "They paste a shielded address. The ZEC arrives privately and Cachet deletes the address."],
+];
 
 const COMPARE = [
-  ["The money moves", "when you make the card", "when they open the link"],
-  ["If nobody opens it", "the money waits in the card", "the money never left your treasury"],
+  ["The money moves", "when you make the card", "when they claim the link"],
+  ["If it's never claimed", "the money waits in the card", "it never leaves your treasury"],
   ["How many at once", "four cards per batch in Vizor", "up to 200 links per batch"],
   ["To receive", "a wallet that redeems gift cards", "any shielded address"],
 ];
+
+function Ticker() {
+  const items = [...TICKER, ...TICKER, ...TICKER, ...TICKER]; // two identical halves, so the drift loops seamlessly
+  return (
+    <div className="mx-5 overflow-hidden rounded-[22px] border-[3px] border-ink bg-sun-soft py-4 sm:mx-8" aria-label="Shielded, no address lists, links expire, any wallet">
+      <div className="drift flex w-max items-center" aria-hidden>
+        {items.map(([Icon, label], i) => (
+          <span key={i} className="flex items-center gap-3 px-8 text-xl font-black uppercase tracking-wide">
+            <Icon className="size-7" strokeWidth={2.5} />
+            {label}
+            <span className="pl-8 text-2xl">·</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function Home() {
   const [sample, setSample] = useState(false);
   const [sampleError, setSampleError] = useState<string | null>(null);
   useEffect(() => { health().then((h) => setSample(h.sample)).catch(() => {}); }, []);
-  const openSample = () =>
-    sampleLetter().then(({ url }) => location.assign(url)).catch((e: Error) => setSampleError(e.message));
+  const tryDemo = () =>
+    sampleLink().then(({ url }) => location.assign(url)).catch((e: Error) => setSampleError(e.message));
 
   return (
-    <div className="mx-auto max-w-6xl px-5 sm:px-8">
-      <nav className="flex items-center justify-between py-6">
-        <a href="/" className="sc text-xl text-paper">Cachet</a>
-        <a href="/desk" className="sc text-paper/75 hover:text-paper">Open the desk</a>
+    <div className="overflow-x-hidden">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
+        <a href="/" className="flex items-center gap-2.5">
+          <img src="/art/play/coin.webp" alt="" className="size-11" />
+          <span className="sticker text-[2.1rem] leading-none">Cachet</span>
+        </a>
+        <div className="hidden items-center gap-9 text-lg font-extrabold md:flex">
+          <a href="#how" className="hover:underline hover:decoration-2 hover:underline-offset-4">How it works</a>
+          <a href="#compare" className="hover:underline hover:decoration-2 hover:underline-offset-4">Compare</a>
+        </div>
+        <a href="/dashboard" className="pill pill-ink">Dashboard</a>
       </nav>
 
-      <section className="grid items-center gap-14 pb-16 pt-8 lg:grid-cols-[1.05fr_1fr] lg:pb-24 lg:pt-16">
-        <div>
-          <h1 className="text-[clamp(2.9rem,7.4vw,5.2rem)] leading-[0.94]">Pay anyone with a sealed link.</h1>
-          <p className="mt-7 max-w-xl text-[clamp(1.2rem,2.4vw,1.45rem)] leading-relaxed text-paper/80">
-            The money stays in your treasury until they open it. They give a shielded address once, it's paid in
-            Zcash, and Cachet forgets the address.
+      <section className="mx-auto grid max-w-7xl items-center gap-4 px-5 pb-10 pt-2 sm:px-8 lg:grid-cols-[1.15fr_1fr]">
+        <div className="relative z-10">
+          <h1 className="sticker text-[clamp(3.5rem,10vw,7.4rem)] leading-[0.9]">Pay anyone with a link.</h1>
+          <p className="mt-7 max-w-xl text-[clamp(1.25rem,2.4vw,1.6rem)] font-bold leading-snug">
+            Your ZEC stays in your treasury until they claim it, then arrives shielded. No addresses to collect.
           </p>
-          <div className="mt-9 flex flex-wrap items-center gap-x-7 gap-y-4">
+          <div className="mt-9 flex flex-wrap gap-4">
             {sample && (
-              <button type="button" onClick={openSample} className="paper sc rounded-[3px] px-7 py-3.5 text-lg">
-                Open a sample letter
+              <button type="button" onClick={tryDemo} className="pill pill-ink">
+                Try a demo payout <ArrowRight className="size-5" strokeWidth={3} />
               </button>
             )}
-            <a href="/desk" className={sample ? "sc text-lg text-paper underline decoration-paper/40 underline-offset-[6px]" : "paper sc rounded-[3px] px-7 py-3.5 text-lg"}>
-              Open the desk
-            </a>
+            <a href="/dashboard" className={`pill ${sample ? "pill-line" : "pill-ink"}`}>Create payout links</a>
           </div>
-          {sampleError && <p role="alert" className="mt-4 text-[#e7a08f]">{sampleError}</p>}
+          {sampleError && <p role="alert" className="mt-4 font-bold text-refuse">{sampleError}</p>}
         </div>
-        <figure className="mx-auto w-full max-w-[540px] rotate-[1.4deg]">
-          <Letter link={SAMPLE} address="uregtest150swjtm94ljj7mf59v3k8cqtfh6a2qj6ee5s5kzlyatgxzganezypnlgxvzl46qv3ce9yr95h9359frty85ctc04t2zjqv9p8cyll7raqjhdf7gxtkkjv9qegk7gwy2wvedsq4szh00l0n4nu6excsatplf7n24wf3t4mw4hs5wf0hz93gjtftmfn64lqkyvzhuluwv5dw69kmmmpdz" />
-          <figcaption className="sc mt-4 text-center text-sm text-paper/55">A real payout, on Cachet's regtest chain</figcaption>
-        </figure>
+        <div className="relative mx-auto w-full max-w-[580px]">
+          <img src="/art/play/mascot-hold.webp" alt="Cachet's mascot, a seal, holding a gold coin" className="relative w-full" />
+          <Sparkle className="wobble absolute left-[3%] top-[14%] size-12" fill="#111" strokeWidth={1.5} aria-hidden />
+          <Sparkle className="wobble absolute right-[10%] top-[3%] size-9" fill="#111" strokeWidth={1.5} style={{ animationDelay: "-1.4s" }} aria-hidden />
+          <Link2 className="wobble absolute right-[1%] top-[24%] size-16" strokeWidth={2.6} style={{ animationDelay: "-0.7s" }} aria-hidden />
+          <img src="/art/play/coin-split.webp" alt="" className="wobble absolute bottom-[16%] right-[-3%] w-[24%]" style={{ animationDelay: "-2s" }} />
+        </div>
       </section>
 
-      <section className="border-t border-paper/15 py-16">
-        <h2 className="max-w-3xl text-[clamp(1.8rem,4vw,2.6rem)] leading-tight">
-          For a gift, use your wallet. For a payout from a treasury, use Cachet.
-        </h2>
-        <div className="mt-10 overflow-x-auto">
-          <table className="w-full min-w-[560px] border-collapse text-left text-[1.1rem]">
-            <thead>
-              <tr className="sc text-paper/60">
-                <th className="w-[30%] py-3 font-normal" />
-                <th className="py-3 font-normal">Wallet gift cards</th>
-                <th className="py-3 font-normal text-paper">Cachet</th>
-              </tr>
-            </thead>
-            <tbody>
-              {COMPARE.map(([row, gift, cachet]) => (
-                <tr key={row} className="border-t border-paper/10">
-                  <th className="sc py-4 pr-6 font-normal text-paper/60">{row}</th>
-                  <td className="py-4 pr-6 text-paper/70">{gift}</td>
-                  <td className="py-4 text-paper">{cachet}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <Ticker />
+
+      <section id="how" className="mx-auto max-w-7xl scroll-mt-6 px-5 py-20 sm:px-8">
+        <h2 className="sticker text-[clamp(2.6rem,6vw,4.2rem)] leading-none">How it works</h2>
+        <ol className="mt-10 grid gap-10 md:grid-cols-3">
+          {STEPS.map(([title, body], i) => (
+            <li key={title}>
+              <span className="sticker text-[4.6rem] leading-none">{i + 1}</span>
+              <h3 className="mt-2 text-2xl font-black">{title}</h3>
+              <p className="mt-2 text-lg leading-snug">{body}</p>
+            </li>
+          ))}
+        </ol>
+
+        <div className="mt-20 grid items-start gap-12 lg:grid-cols-2">
+          <figure>
+            <Receipt link={SAMPLE} address={SAMPLE_ADDRESS} />
+            <figcaption className="mt-4 text-center font-extrabold text-ink-soft">A real payout, made with Cachet on its test network</figcaption>
+          </figure>
+          <div id="compare" className="card scroll-mt-6 p-[clamp(1.5rem,4vw,2.5rem)]">
+            <h2 className="sticker text-[clamp(2.2rem,5vw,3rem)] leading-none">Why not a gift card?</h2>
+            <p className="mt-3 text-lg font-bold">For a gift, use your wallet. To pay people from a treasury, use Cachet.</p>
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full min-w-[420px] border-collapse text-left">
+                <thead>
+                  <tr className="text-sm font-black uppercase tracking-wide text-ink-soft">
+                    <th className="w-[32%] pb-2" />
+                    <th className="pb-2">Wallet gift cards</th>
+                    <th className="pb-2 text-ink">Cachet</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARE.map(([row, gift, cachet]) => (
+                    <tr key={row} className="border-t-[3px] border-dashed border-ink/15">
+                      <th className="py-3 pr-4 text-sm font-black uppercase tracking-wide text-ink-soft">{row}</th>
+                      <td className="py-3 pr-4 text-ink-soft">{gift}</td>
+                      <td className="py-3 font-extrabold">{cachet}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-5 text-sm text-ink-soft">
+              From the{" "}
+              <a className="underline decoration-2 underline-offset-4" href="https://github.com/chainapsis/vizor-wallet/releases">Vizor release notes</a>{" "}
+              and the{" "}
+              <a className="underline decoration-2 underline-offset-4" href="https://github.com/zodl-inc/zodl-ios/blob/main/CHANGELOG.md">Zodl changelog</a>.
+            </p>
+          </div>
         </div>
-        <p className="mt-6 text-sm text-paper/45">
-          From the{" "}
-          <a className="underline underline-offset-4" href="https://github.com/chainapsis/vizor-wallet/releases">Vizor release notes</a>{" "}
-          and the{" "}
-          <a className="underline underline-offset-4" href="https://github.com/zodl-inc/zodl-ios/blob/main/CHANGELOG.md">Zodl changelog</a>.
-        </p>
       </section>
 
-      <footer className="sc flex flex-wrap justify-between gap-3 border-t border-paper/15 py-8 text-sm text-paper/45">
+      <footer className="mx-auto flex max-w-7xl flex-wrap justify-between gap-3 border-t-[3px] border-ink px-5 py-8 font-extrabold sm:px-8">
         <span>Built for Zecathon 2026</span>
-        <span>Shielded payouts in Zcash's Ironwood pool</span>
+        <span>Private payouts on Zcash</span>
       </footer>
     </div>
   );

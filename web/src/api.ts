@@ -38,7 +38,7 @@ export async function claimLink(token: string, address: string): Promise<LinkVie
 }
 
 export const health = (): Promise<{ network: Network; sample: boolean }> => fetch("/api/health").then(body);
-export const sampleLetter = (): Promise<{ url: string }> => fetch("/api/sample", { method: "POST" }).then(body);
+export const sampleLink = (): Promise<{ url: string }> => fetch("/api/sample", { method: "POST" }).then(body);
 
 export async function admin<T>(path: string, key: string, init: RequestInit = {}): Promise<T> {
   return body(await fetch(`/api/admin/${path}`, {

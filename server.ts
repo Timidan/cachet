@@ -13,9 +13,9 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN ?? "";
 const PUBLIC_URL = (process.env.PUBLIC_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
 const PUBLIC_DIR = resolve(import.meta.dir, "web/dist");
 const TICK_MS = Number(process.env.TICK_MS ?? 4_000);
-// Regtest demo only: a wallet Cachet runs on the test chain, so judges can open a sample letter without one.
+// Regtest demo only: a wallet Cachet runs on the test chain, so judges can open a sample link without one.
 const DEMO_RECIPIENT = NETWORK === "regtest" ? (process.env.DEMO_RECIPIENT ?? "") : "";
-const DEMO_CAP = 1_000; // sample letters in total, so the demo can't drain the regtest treasury
+const DEMO_CAP = 1_000; // sample links in total, so the demo can't drain the regtest treasury
 const MIN_ZATS = 5_000; // ZIP-317 marginal fee: a smaller note costs the recipient more to spend than it holds
 const MEMO_BYTES = 512;
 
@@ -68,20 +68,20 @@ function view(l: Link) {
   };
 }
 
-// One sample letter for a visitor, from a standing "sample letters" batch.
-function sampleLetter() {
+// One demo payout link for a visitor, from a standing "Demo payouts" batch.
+function sampleLink() {
   if (!DEMO_RECIPIENT) return fail(404, "Not found.");
-  const label = "Sample letters";
+  const label = "Demo payouts";
   let batch = db.query<{ id: number }, [string]>("SELECT id FROM batches WHERE label = ?").get(label);
   if (!batch) {
     db.run(
-      "INSERT INTO batches (label, sender, note, zats, created_at, expires_at) VALUES (?, 'Cachet', 'A sample letter, on the test chain', 20000, ?, ?)",
+      "INSERT INTO batches (label, sender, note, zats, created_at, expires_at) VALUES (?, 'Cachet', 'A demo payout on the test network', 20000, ?, ?)",
       [label, Date.now(), Date.now() + 365 * 86_400_000],
     );
     batch = { id: lastId() };
   }
   const made = db.query<{ n: number }, [number]>("SELECT COUNT(*) AS n FROM links WHERE batch_id = ?").get(batch.id)!.n;
-  if (made >= DEMO_CAP) return fail(429, "The sample letters have all been sent.");
+  if (made >= DEMO_CAP) return fail(429, "The demo payouts have all been claimed.");
   const token = newToken();
   db.run("INSERT INTO links (batch_id, token_hash) VALUES (?, ?)", [batch.id, hash(token)]);
   return json({ url: `/c/${token}` }, 201);
@@ -99,7 +99,7 @@ async function claim(token: string, req: Request) {
     "UPDATE links SET status = 'queued', address = ?, claimed_at = ?, error = NULL WHERE id = ? AND status = 'sealed'",
     [address, Date.now(), link.id],
   );
-  if (!changes()) return fail(409, "This link was just opened by someone else.");
+  if (!changes()) return fail(409, "This link was just claimed by someone else.");
   void tick();
   return json(view(linkByToken.get(hash(token))!));
 }
@@ -228,9 +228,9 @@ export function start(port = Number(process.env.PORT ?? 3000)) {
         return link ? json(view(link)) : fail(404, "This link doesn't exist.");
       }
       if ((m = path.match(new RegExp(`^/api/link/${TOKEN}/claim$`))) && req.method === "POST") return claim(m[1], req);
-      if (path === "/api/sample" && req.method === "POST") return sampleLetter();
+      if (path === "/api/sample" && req.method === "POST") return sampleLink();
       if (path.startsWith("/api/admin/")) {
-        if (!admin(req)) return fail(401, "Wrong admin token.");
+        if (!admin(req)) return fail(401, "That access key isn't right.");
         if (path === "/api/admin/batches") return req.method === "POST" ? createBatch(req) : json(batches());
         if (path === "/api/admin/treasury") return json(await treasury());
       }
