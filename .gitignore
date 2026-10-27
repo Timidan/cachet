@@ -15,6 +15,8 @@ wallet-main/
 wallet-regtest/
 wallet-regtest-recipient/
 wallet-watch/
+wallet-test-recipient/
+wallet-test-watch/
 web/dist/
 web/node_modules/
 video/node_modules/
@@ -31,3 +33,8 @@ docs/anatomy/*
 docs/samples/*
 !docs/samples/c-playful.png
 video/out/
+
+# Working notes kept out of the public repo
+HACKATHON.md
+docs/research/
+docs/samples/
