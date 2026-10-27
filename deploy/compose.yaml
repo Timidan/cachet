@@ -6,6 +6,12 @@ services:
     container_name: cachet
     restart: unless-stopped
     env_file: .env
+    # The server gets only the treasury's viewing key. The seed is for the demo's signer, which plays the organiser.
+    environment:
+      WALLET_DIR: /data/wallet-watch
+      SIGNER_WALLET: /data/wallet-regtest
+      SIGNER_IDENTITY: /data/wallet-regtest/key.txt
+      CACHET_URL: http://127.0.0.1:3000
     volumes:
       - ./data:/data
     networks: [public_proxy]

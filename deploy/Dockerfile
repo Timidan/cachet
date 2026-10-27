@@ -1,4 +1,4 @@
-# Hosted Cachet: the web app and payout worker, plus a regtest Zcash chain (Zebra + lightwalletd) for the demo.
+# Hosted Cachet: the web app, its worker and the demo's signer, plus a regtest Zcash chain (Zebra + lightwalletd).
 # The binaries in bin/ are built on an Arch-family machine; this base image supplies a matching glibc
 # (the VPS runs Debian 11, whose glibc is too old to run them directly).
 FROM archlinux:base
