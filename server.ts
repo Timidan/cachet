@@ -248,7 +248,9 @@ async function serveStatic(path: string) {
   if (target.startsWith(`${PUBLIC_DIR}/`) && (await file.exists())) return new Response(file, { headers: HEADERS });
   // A missing asset is a 404: answering with the app's HTML would let a CDN cache it as an image.
   if (/\.[a-z0-9]+$/i.test(path)) return new Response("Not found", { status: 404, headers: HEADERS });
-  return new Response(Bun.file(`${PUBLIC_DIR}/index.html`), { headers: { ...HEADERS, "content-type": "text/html" } });
+  // Claim links are secrets and the dashboard is private: keep both out of search results.
+  const robots = path.startsWith("/c/") || path === "/dashboard" ? { "x-robots-tag": "noindex" } : {};
+  return new Response(Bun.file(`${PUBLIC_DIR}/index.html`), { headers: { ...HEADERS, ...robots, "content-type": "text/html" } });
 }
 
 const TOKEN = "([A-Za-z0-9_-]{22})";

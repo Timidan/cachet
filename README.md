@@ -108,11 +108,12 @@ Regtest transactions are not visible on public explorers.
 
 [cachet.timidan.xyz](https://cachet.timidan.xyz): press **Try a demo payout**, then **Testing? Use a demo address**, then **Claim payment**. The receipt shows the claim waiting for approval, then the block and transaction id once it lands, usually within a minute.
 
-The demo environment differs from a production deployment in three ways:
+The demo environment differs from a production deployment in four ways:
 
 - It runs on Cachet's own regtest chain (Zebra 7.0.0 with NU6.3 Ironwood rules, the rules mainnet runs today), because none of the public testnet faucets we tried in the final week would pay out.
 - A signer process on the same server plays the organiser and approves every claim.
 - The demo address belongs to a wallet Cachet runs, since visitors have no wallet on a private chain.
+- Its traffic passes through Cloudflare, which terminates TLS and so can see each request, including a link's token, the visitor's IP address and the shielded address in a claim. A production deployment should terminate TLS on its own server.
 
 ## Architecture
 
