@@ -85,7 +85,8 @@ body {
 .ink-line { stroke-dasharray: 180 600; animation: ink 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
 @keyframes ink { from { stroke-dashoffset: 780 } to { stroke-dashoffset: 0 } }
 
-:focus-visible { outline: 3px solid var(--color-ink); outline-offset: 3px; border-radius: 12px; }
+/* The ring follows each control's own shape; a radius here would square off the pills when focused. */
+:focus-visible { outline: 3px solid var(--color-ink); outline-offset: 3px; }
 ::selection { background: var(--color-ink); color: var(--color-sun); }
 
 @media (prefers-reduced-motion: reduce) {
