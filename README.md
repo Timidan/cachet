@@ -4,7 +4,7 @@ Pay anyone with a link: your ZEC stays in your treasury until they claim it, the
 
 [Live demo](#try-it-in-60-seconds) · [Video](#) · [Evidence](#evidence) · [How it works](#how-it-works)
 
-![Cachet's claim page before and after: the seal mascot offers a gold seal-coin; once tapped, the receipt shows 0.0002 ZEC delivered with its block and transaction id](docs/screens/hero.png)
+![Cachet on a phone: a payout link with the seal mascot offering a gold coin; a refused transparent address; and the received payment with its block, transaction id and deleted address](docs/screens/hero.png)
 
 Hackathons, bounty programs and grant rounds pay people they barely know. Today they collect everyone's name and address in a form or a Telegram chat first, and that list outlives the payment. Cachet skips the list: the organiser creates a link, the recipient claims it with a shielded address, and the payment arrives in Zcash's Ironwood pool with the organiser's note as an encrypted memo. Cachet deletes the address as soon as the block confirms the payment.
 
