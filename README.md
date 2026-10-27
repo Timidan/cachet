@@ -4,7 +4,7 @@ Pay anyone with a sealed link: the ZEC stays in your treasury until they open it
 
 [Live demo](#try-it-in-60-seconds) · [Video](#) · [Evidence](#evidence) · [How it works](#how-it-works)
 
-![A Cachet letter, delivered: 0.0002 ZEC with its memo, the transaction id, and the recipient's address struck out](docs/screens/delivered.png)
+![Before and after: a sealed Cachet letter with a gold wax seal, and a delivered one showing 0.0002 ZEC, its memo, the block and the transaction id](docs/screens/hero.png)
 
 Hackathons, bounty programs and grant rounds pay people they barely know. Today they collect everyone's name and address in a form or a Telegram chat first, and that list outlives the payment. Cachet skips the list: the organiser seals a link, the recipient opens it and gives a shielded address once, and the payment arrives in Zcash's Ironwood pool with the organiser's note as an encrypted memo. Cachet deletes the address as soon as the block confirms the payment.
 
