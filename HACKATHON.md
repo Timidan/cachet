@@ -102,7 +102,9 @@ User: Cachet must not be a copy of NimDrops (Nimiq, Jul: one shared first-come l
 
 ## G7 submit gate (status Oct 27 ~13:15 UTC; deadline Oct 28 23:59 UTC)
 - Hosted demo: PASS. Live claim 41097c4c delivered in block 240, 45 s after claiming; treasury view shows no recipient.
-- Video: IN PROGRESS. 1080p preview 1:48 sent to the user; 4K master rendering (`video/record.mjs 2`, then `video/edit.sh`). Hosting UNKNOWN: needs the user (YouTube upload by them, or self-host on cachet.timidan.xyz with their OK).
+- Video: PASS (file). 4K master `video/out/2x/cachet-demo.mp4`: 3840x2160, H.264 High, 60 fps, 1:47, 32.6 MB; 1080p copy beside it. Hosting UNKNOWN: needs the user (upload) or their OK to self-host.
+- Public testnet (Oct 27 ~13:30 UTC): BLOCKED. Valar faucet refuses every address ("the wallet cannot pay this address", 0 payouts in 24 h, also for a new wallet); Jino paused for NU7. Regtest remains the demo; retry the faucet before ~Oct 28 12:00 UTC. Testnet treasury: `wallet/` (synced to 4,547,559, balance 0); testnet demo wallet: `wallet-test-recipient/`.
+- Site: micro-interactions and 320 px fixes live (e166f06); demo claim delivered in 44 s on the live chain (block 241).
 - Repo public: FAIL until the user approves (Timidan/cachet is private; the rules require public by the deadline).
 - Form: description drafted (1913 chars); video URL pending; submit needs the user's go-ahead.
 - Track: Shielded Payments.
