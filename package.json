@@ -2,7 +2,7 @@
   "name": "cachet",
   "version": "0.1.0",
   "private": true,
-  "description": "Pay anyone with a sealed link: shielded Zcash payouts without collecting anyone's address first.",
+  "description": "Private payouts on Zcash: pay anyone with a link, approved with your own key and delivered shielded.",
   "license": "MIT",
   "type": "module",
   "scripts": {
