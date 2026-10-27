@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { admin, day, FEE_ZATS, short, zec, type Batch, type Status, type Treasury } from "./api";
 import { CircleAlert } from "lucide-react";
 import { CoinMark } from "./Coin";
+import { Copy } from "./Receipt";
 
 const KEY = "cachet-access-key";
 const stored = () => { try { return sessionStorage.getItem(KEY) ?? ""; } catch { return ""; } };
@@ -77,9 +78,7 @@ export function Dashboard() {
             </p>
             <p className="mt-2 font-mono text-sm">
               {short(treasury.address, 14, 8)}{" "}
-              <button type="button" aria-label="Copy funding address" className="ml-2 inline-flex min-h-6 items-center py-1 font-extrabold underline decoration-2 underline-offset-4" onClick={() => navigator.clipboard.writeText(treasury.address)}>
-                Copy
-              </button>
+              <Copy text={treasury.address} label="Copy funding address" className="ml-2 inline-flex min-h-6 items-center py-1 font-extrabold underline decoration-2 underline-offset-4" />
             </p>
           </div>
         </section>
@@ -178,7 +177,7 @@ function Fresh({ label, links, onDone }: { label: string; links: string[]; onDon
         {links.map((l) => <li key={l} className="truncate">{l}</li>)}
       </ol>
       <div className="mt-6 flex flex-wrap gap-5 font-extrabold">
-        <button type="button" className="underline decoration-2 underline-offset-4" onClick={() => navigator.clipboard.writeText(links.join("\n"))}>Copy all</button>
+        <Copy text={links.join("\n")} className="underline decoration-2 underline-offset-4">Copy all</Copy>
         <a className="underline decoration-2 underline-offset-4" download={`${label || "cachet"}-links.csv`} href={`data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`}>Download CSV</a>
         <button type="button" className="text-ink-soft underline decoration-2 underline-offset-4" onClick={onDone}>Done</button>
       </div>

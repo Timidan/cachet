@@ -1,16 +1,23 @@
 import { useState } from "react";
 import { short, zec, type LinkView } from "./api";
 
-function Copy({ text, label }: { text: string; label: string }) {
-  const [done, setDone] = useState(false);
+/** A copy button that says whether the text reached the clipboard; some in-app browsers block it. */
+export function Copy({ text, label, children = "Copy", className = "inline-flex min-h-7 items-center rounded-full border-2 border-ink px-3 text-sm font-extrabold hover:bg-ink hover:text-sun" }: {
+  text: string; label?: string; children?: string; className?: string;
+}) {
+  const [result, setResult] = useState<string | null>(null);
   return (
     <button
       type="button"
-      aria-label={label}
-      className="inline-flex min-h-7 items-center rounded-full border-2 border-ink px-3 text-sm font-extrabold hover:bg-ink hover:text-sun"
-      onClick={() => navigator.clipboard.writeText(text).then(() => setDone(true))}
+      aria-label={result ? undefined : label}
+      className={className}
+      onClick={() =>
+        Promise.resolve()
+          .then(() => navigator.clipboard.writeText(text))
+          .then(() => setResult("Copied"), () => setResult("Couldn't copy"))
+      }
     >
-      {done ? "Copied" : "Copy"}
+      {result ?? children}
     </button>
   );
 }
