@@ -2,6 +2,12 @@
   "name": "cachet-video",
   "private": true,
   "type": "module",
-  "scripts": { "rough": "node record.mjs" },
-  "devDependencies": { "puppeteer-core": "^24.43.1" }
+  "scripts": {
+    "record": "node record.mjs",
+    "edit": "./edit.sh"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.43.1",
+    "puppeteer-capture": "^1.58.0"
+  }
 }
