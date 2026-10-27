@@ -124,21 +124,22 @@ export function Home() {
           <div id="compare" className="card scroll-mt-6 p-[clamp(1.5rem,4vw,2.5rem)]">
             <h2 className="sticker text-balance text-[clamp(2.2rem,5vw,3rem)] leading-none">Why not a gift card?</h2>
             <p className="mt-3 text-pretty text-lg font-bold">For a gift, use your wallet. To pay people from a treasury, use Cachet.</p>
-            <div className="mt-6 overflow-x-auto">
-              <table className="w-full min-w-[420px] border-collapse text-left">
-                <thead>
-                  <tr className="text-sm font-black uppercase tracking-wide text-ink-soft">
-                    <th className="w-[32%] pb-2" />
-                    <th className="pb-2">Wallet gift cards</th>
-                    <th className="pb-2 text-ink">Cachet</th>
+            {/* In a narrow card each row stacks: its label on top, the two answers side by side. The roles keep it a table for screen readers. */}
+            <div className="@container mt-6">
+              <table role="table" className="w-full border-collapse text-left @max-md:block">
+                <thead className="@max-md:block">
+                  <tr role="row" className="text-sm font-black uppercase tracking-wide text-ink-soft @max-md:grid @max-md:grid-cols-2 @max-md:gap-x-4">
+                    <th className="w-[32%] pb-2 @max-md:hidden" />
+                    <th role="columnheader" className="pb-2">Wallet gift cards</th>
+                    <th role="columnheader" className="pb-2 text-ink">Cachet</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="@max-md:block">
                   {COMPARE.map(([row, gift, cachet]) => (
-                    <tr key={row} className="border-t-[3px] border-dashed border-ink/15">
-                      <th className="py-3 pr-4 text-sm font-black uppercase tracking-wide text-ink-soft">{row}</th>
-                      <td className="py-3 pr-4 text-ink-soft">{gift}</td>
-                      <td className="py-3 font-extrabold">{cachet}</td>
+                    <tr key={row} role="row" className="border-t-[3px] border-dashed border-ink/15 @max-md:grid @max-md:grid-cols-2 @max-md:gap-x-4">
+                      <th role="rowheader" scope="row" className="py-3 pr-4 text-sm font-black uppercase tracking-wide text-ink-soft @max-md:col-span-2 @max-md:pb-1">{row}</th>
+                      <td role="cell" className="py-3 pr-4 text-ink-soft @max-md:pt-0">{gift}</td>
+                      <td role="cell" className="py-3 font-extrabold @max-md:pt-0">{cachet}</td>
                     </tr>
                   ))}
                 </tbody>
