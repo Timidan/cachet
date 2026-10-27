@@ -2,7 +2,7 @@
 
 **Private payouts on Zcash.** Pay anyone with a link: the ZEC stays in your treasury until the recipient claims it and your key signs, then it arrives shielded.
 
-[Live demo](https://cachet.timidan.xyz) · [Demo video](https://youtu.be/JeJLB7VKeHs) · [How it works](#how-it-works) · [Privacy model](#privacy-model) · [Evidence](#evidence)
+[Live demo](https://cachet.timidan.xyz) · [Demo video](https://youtu.be/n9GtFowPyhY) · [How it works](#how-it-works) · [Privacy model](#privacy-model) · [Evidence](#evidence)
 
 ![Cachet on a phone: a payout link with the seal mascot offering a gold coin; a refused transparent address; and the received payment with its block, transaction id and deleted address](docs/screens/hero.png)
 
