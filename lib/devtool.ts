@@ -1,8 +1,8 @@
-// The wallet that signs Cachet's payouts: a thin wrapper over the zcash-devtool CLI.
+// Cachet's view of the treasury: a watch-only wallet (a full viewing key, no spending key) behind the zcash-devtool CLI.
+// It builds and proves payouts as PCZTs; the organiser's signer (signer.ts) signs them; this sends them.
 // ponytail: one CLI call per payout behind a global lock; link librustzcash directly if throughput matters.
 const BIN = process.env.DEVTOOL ?? "vendor/zcash-devtool/target/release/zcash-devtool";
-const WALLET = process.env.WALLET_DIR ?? "wallet-regtest";
-const IDENTITY = process.env.IDENTITY ?? `${WALLET}/key.txt`;
+const WALLET = process.env.WALLET_DIR ?? "wallet-watch";
 const SERVER = process.env.LWD_SERVER ?? "127.0.0.1:9067";
 
 export type AddressInfo = { network: string; kind: string; receivers: string[] };
@@ -36,13 +36,35 @@ export async function inspect(address: string): Promise<AddressInfo | null> {
   return parseInspect(await run(["inspect", address]).catch(() => ""));
 }
 
-export function send(address: string, zats: number, memo: string): Promise<string> {
+// PCZTs are binary, so they go through stdin and stdout.
+async function pipe(args: string[], input?: Uint8Array): Promise<Uint8Array> {
+  const p = Bun.spawn([BIN, ...args], { stdin: input ?? "ignore", stdout: "pipe", stderr: "pipe" });
+  const [out, err, code] = await Promise.all([new Response(p.stdout).arrayBuffer(), new Response(p.stderr).text(), p.exited]);
+  if (code !== 0) throw new Error(err.match(/Error: (.*)/)?.[1]?.trim() ?? `zcash-devtool exited with ${code}`);
+  return new Uint8Array(out);
+}
+
+// A payout ready for the organiser to sign: built and proven from the viewing key alone.
+export async function build(address: string, zats: number, memo: string): Promise<Uint8Array> {
+  const pczt = await locked(() => pipe(["pczt", "-w", WALLET, "create", "--address", address, "--value", String(zats), "--memo", memo]));
+  return pipe(["pczt", "prove"], pczt);
+}
+
+// Sends a signed payout and records it in the watch-only wallet, so its notes count as spent.
+export function broadcast(pczt: Uint8Array): Promise<string> {
   return locked(async () => {
-    const out = await run(["wallet", "-w", WALLET, "send", "-i", IDENTITY, "-s", SERVER, "--address", address, "--value", String(zats), "--memo", memo]);
+    const out = new TextDecoder().decode(await pipe(["pczt", "-w", WALLET, "send", "-s", SERVER], pczt));
     const txid = out.match(/^[0-9a-f]{64}$/m)?.[0];
     if (!txid) throw new Error("the wallet did not return a transaction id");
     return txid;
   });
+}
+
+// The treasury's full viewing key: it shows every payout and memo to whoever holds it, and can't spend.
+let ufvk = "";
+export async function auditKey(): Promise<string> {
+  ufvk ||= (await locked(() => run(["wallet", "-w", WALLET, "list-accounts"]))).match(/UFVK: (\S+)/)?.[1] ?? "";
+  return ufvk;
 }
 
 export const sync = () => locked(() => run(["wallet", "-w", WALLET, "sync", "-s", SERVER]));

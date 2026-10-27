@@ -1,4 +1,5 @@
-// Cachet: pay anyone with a sealed link. One Bun process: the JSON API, the built web app and the payout worker.
+// Cachet: pay anyone with a link. One Bun process: the JSON API, the built web app and the worker that watches
+// payouts confirm. It holds only the treasury's viewing key: the organiser's signer (signer.ts) signs every payout.
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { timingSafeEqual } from "node:crypto";
@@ -29,7 +30,7 @@ CREATE TABLE IF NOT EXISTS batches (
 CREATE TABLE IF NOT EXISTS links (
   id INTEGER PRIMARY KEY, batch_id INTEGER NOT NULL REFERENCES batches(id),
   token_hash TEXT NOT NULL UNIQUE,         -- the link itself is never stored
-  status TEXT NOT NULL DEFAULT 'sealed',   -- sealed → queued → sent → delivered, or expired
+  status TEXT NOT NULL DEFAULT 'sealed',   -- sealed → queued (claimed, awaiting the organiser's signature) → sent → delivered, or expired
   address TEXT,                            -- held only from claim until the payout is mined
   txid TEXT, height INTEGER, error TEXT, claimed_at INTEGER, sent_at INTEGER, delivered_at INTEGER);
 `);
@@ -100,7 +101,6 @@ async function claim(token: string, req: Request) {
     [address, Date.now(), link.id],
   );
   if (!changes()) return fail(409, "This link was just claimed by someone else.");
-  void tick();
   return json(view(linkByToken.get(hash(token))!));
 }
 
@@ -154,34 +154,66 @@ async function treasury() {
     `SELECT COALESCE(SUM(zats), 0) AS z FROM links JOIN batches ON batches.id = links.batch_id
      WHERE status IN ('sealed', 'queued') AND expires_at > ?`,
   ).get(Date.now())!.z;
-  return { network: NETWORK, ...(await wallet.treasury()), reserved };
+  const awaiting = db.query<{ n: number }, []>("SELECT COUNT(*) AS n FROM links WHERE status = 'queued'").get()!.n;
+  return { network: NETWORK, ...(await wallet.treasury()), reserved, awaiting, auditKey: await wallet.auditKey() };
 }
 
-// The payout worker: send queued claims, then watch sent payouts until they're mined.
+// Release a claim that can't be paid, so the recipient can try again, and forget the address meanwhile.
+const release = (id: number, why: string) =>
+  db.run("UPDATE links SET status = 'sealed', address = NULL, error = ? WHERE id = ?", [why, id]);
+
+// The payout the signer is signing. One at a time: an unsigned PCZT doesn't reserve its notes, so a second one
+// built before this one is sent could spend the same note. Built when the signer asks, so it can't expire while waiting.
+let pending: { id: number; pczt: Uint8Array; at: number } | null = null;
+type Queued = { id: number; address: string; zats: number; sender: string; note: string; claimed_at: number };
+const nextQueued = db.query<Queued, []>(
+  `SELECT links.id, address, zats, sender, note, claimed_at FROM links JOIN batches ON batches.id = links.batch_id
+   WHERE status = 'queued' ORDER BY claimed_at LIMIT 1`,
+);
+
+async function nextPayout() {
+  if (pending && Date.now() - pending.at > 10 * 60_000) pending = null; // the signer went away
+  if (!pending) {
+    const l = nextQueued.get();
+    if (!l) return new Response(null, { status: 204, headers: HEADERS });
+    try {
+      pending = { id: l.id, pczt: await wallet.build(l.address, l.zats, memo(l.sender, l.note)), at: Date.now() };
+    } catch (e) {
+      // Change from the last payout is still confirming: ask again shortly.
+      if (/Insufficient balance/i.test(errorText(e)) && Date.now() - l.claimed_at < 10 * 60_000) {
+        await wallet.mine(); // regtest only: stand-in for the next block
+        return fail(503, "The treasury's change is still confirming. Try again in a moment.");
+      }
+      release(l.id, errorText(e));
+      return fail(500, errorText(e));
+    }
+  }
+  return json({ id: pending.id, pczt: Buffer.from(pending.pczt).toString("base64") });
+}
+
+async function submitPayout(id: number, req: Request) {
+  if (pending?.id !== id) return fail(409, "That payout isn't waiting for a signature.");
+  const b = await req.json().catch(() => null);
+  const signed = typeof b?.pczt === "string" ? Buffer.from(b.pczt, "base64") : null;
+  if (!signed?.length) return fail(400, "Send the signed payout.");
+  pending = null;
+  try {
+    const txid = await wallet.broadcast(signed);
+    db.run("UPDATE links SET status = 'sent', txid = ?, sent_at = ? WHERE id = ?", [txid, Date.now(), id]);
+    return json({ txid });
+  } catch (e) {
+    release(id, errorText(e));
+    return fail(502, errorText(e));
+  }
+}
+
+// The worker: watch sent payouts until they're mined, then forget the address.
 let ticking = false;
 let lastSync = 0;
 async function tick() {
   if (ticking) return;
   ticking = true;
   try {
-    type Queued = { id: number; address: string; zats: number; sender: string; note: string; claimed_at: number };
-    const queued = db.query<Queued, []>(
-      `SELECT links.id, address, zats, sender, note, claimed_at FROM links JOIN batches ON batches.id = links.batch_id
-       WHERE status = 'queued' ORDER BY claimed_at`,
-    ).all();
-    for (const l of queued) {
-      try {
-        const txid = await wallet.send(l.address, l.zats, memo(l.sender, l.note));
-        db.run("UPDATE links SET status = 'sent', txid = ?, sent_at = ? WHERE id = ?", [txid, Date.now(), l.id]);
-      } catch (e) {
-        // Change from the last payout is still confirming: keep the claim queued for a while.
-        if (/Insufficient balance/i.test(errorText(e)) && Date.now() - l.claimed_at < 10 * 60_000) continue;
-        // Otherwise release the link so the recipient can try again, and forget the address meanwhile.
-        db.run("UPDATE links SET status = 'sealed', address = NULL, error = ? WHERE id = ?", [errorText(e), l.id]);
-      }
-    }
-    // Regtest only: a claim waiting on change needs a block, and nothing else will mine one.
-    if (queued.length && db.query("SELECT 1 FROM links WHERE status = 'queued'").get()) await wallet.mine();
     const sent = db.query<{ id: number; txid: string; sent_at: number }, []>(
       "SELECT id, txid, sent_at FROM links WHERE status = 'sent'",
     ).all();
@@ -235,6 +267,8 @@ export function start(port = Number(process.env.PORT ?? 3000)) {
         if (!admin(req)) return fail(401, "That access key doesn't match. Check it and try again.");
         if (path === "/api/admin/batches") return req.method === "POST" ? createBatch(req) : json(batches());
         if (path === "/api/admin/treasury") return json(await treasury());
+        if (path === "/api/admin/payouts/next" && req.method === "POST") return nextPayout();
+        if ((m = path.match(/^\/api\/admin\/payouts\/(\d+)$/)) && req.method === "POST") return submitPayout(Number(m[1]), req);
       }
       if (path.startsWith("/api/")) return fail(404, "Not found.");
       return serveStatic(path);

@@ -8,7 +8,7 @@ const KEY = "cachet-access-key";
 const stored = () => { try { return sessionStorage.getItem(KEY) ?? ""; } catch { return ""; } };
 const store = (k: string) => { try { k ? sessionStorage.setItem(KEY, k) : sessionStorage.removeItem(KEY); } catch {} };
 
-const WORD: Record<Status, string> = { sealed: "unclaimed", queued: "sending", sent: "sending", delivered: "paid", expired: "expired" };
+const WORD: Record<Status, string> = { sealed: "unclaimed", queued: "to approve", sent: "sending", delivered: "paid", expired: "expired" };
 const MARK = { sealed: "sealed", queued: "travelling", sent: "travelling", delivered: "delivered", expired: "expired" } as const;
 
 const field = "field mt-2";
@@ -62,7 +62,7 @@ export function Dashboard() {
       )}
 
       {treasury && (
-        <section className="card grid gap-6 p-7 sm:grid-cols-3">
+        <section className="card grid gap-6 p-7 sm:grid-cols-2">
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-ink-soft">Treasury balance</p>
             <p className="sticker-flat mt-1 whitespace-nowrap text-[clamp(1.7rem,3.2vw,2.2rem)] leading-none">{balance(treasury.spendable)} ZEC</p>
@@ -81,6 +81,29 @@ export function Dashboard() {
               <Copy text={treasury.address} label="Copy funding address" className="ml-2 inline-flex min-h-6 items-center py-1 font-extrabold underline decoration-2 underline-offset-4" />
             </p>
           </div>
+          <div className="min-w-0">
+            <p className="text-sm font-black uppercase tracking-wide text-ink-soft">Audit key</p>
+            <p className="mt-2 font-mono text-sm">
+              {short(treasury.auditKey, 14, 8)}{" "}
+              <Copy text={treasury.auditKey} label="Copy audit key" className="ml-2 inline-flex min-h-6 items-center py-1 font-extrabold underline decoration-2 underline-offset-4" />
+            </p>
+            <p className="mt-1 text-pretty text-sm leading-snug text-ink-soft">Shows every payout and memo. It can't spend.</p>
+          </div>
+        </section>
+      )}
+
+      {treasury && treasury.awaiting > 0 && (
+        <section className="card mt-6 flex flex-wrap items-center justify-between gap-4 p-6">
+          <div>
+            <h2 className="sticker-flat text-[1.6rem] leading-tight">
+              {treasury.awaiting} payout{treasury.awaiting === 1 ? "" : "s"} to approve
+            </h2>
+            <p className="mt-1 text-pretty font-bold text-ink-soft">Cachet never holds your spending key. Run your signer where the key is kept.</p>
+          </div>
+          <p className="flex items-center gap-3 font-mono text-sm">
+            bun signer.ts
+            <Copy text="bun signer.ts" label="Copy signer command" />
+          </p>
         </section>
       )}
 

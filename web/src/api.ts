@@ -11,7 +11,11 @@ export type Batch = {
   id: number; label: string; sender: string; note: string; zats: number; createdAt: number; expiresAt: number;
   links: { n: number; status: Status; txid: string | null; height: number | null }[];
 };
-export type Treasury = { network: Network; address: string; spendable: number; reserved: number };
+export type Treasury = {
+  network: Network; address: string; spendable: number; reserved: number;
+  awaiting: number; // claimed payouts waiting for the organiser's signature
+  auditKey: string; // the treasury's full viewing key
+};
 
 export const PREFIX: Record<Network, string> = { main: "u1", test: "utest1", regtest: "uregtest1" };
 export const FEE_ZATS = 10_000; // ZIP-317 fee for one shielded payout

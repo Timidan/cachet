@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, CircleAlert, Clock, Link2, Lock, ShieldCheck, Sparkle, Wallet } from "lucide-react";
+import { ArrowRight, CircleAlert, Clock, KeyRound, Link2, Lock, ShieldCheck, Sparkle, Wallet } from "lucide-react";
 import { Receipt } from "./Receipt";
 import { health, sampleLink, type LinkView } from "./api";
 
@@ -13,18 +13,20 @@ const SAMPLE_ADDRESS =
   "uregtest150swjtm94ljj7mf59v3k8cqtfh6a2qj6ee5s5kzlyatgxzganezypnlgxvzl46qv3ce9yr95h9359frty85ctc04t2zjqv9p8cyll7raqjhdf7gxtkkjv9qegk7gwy2wvedsq4szh00l0n4nu6excsatplf7n24wf3t4mw4hs5wf0hz93gjtftmfn64lqkyvzhuluwv5dw69kmmmpdz";
 
 const TICKER = [
-  [ShieldCheck, "Shielded"], [Lock, "No address lists"], [Clock, "Links expire"], [Wallet, "Any wallet"],
+  [ShieldCheck, "Shielded"], [Lock, "No address lists"], [KeyRound, "Your key signs"], [Clock, "Links expire"], [Wallet, "Any wallet"],
 ] as const;
 
 const STEPS = [
   ["Create links", "Choose an amount and a message. You get one link per person, and nothing moves on-chain yet."],
   ["Send them", "By email, Signal or chat. Cachet stores only a fingerprint of each link."],
-  ["They claim", "They paste a shielded address. The ZEC arrives privately and Cachet deletes the address."],
+  ["They claim", "They paste a shielded address. Cachet refuses public addresses before anything is built."],
+  ["You approve", "Your signer signs the payout with your key; Cachet holds only a viewing key. The ZEC arrives privately and the address is deleted."],
 ];
 
 const COMPARE = [
   ["The money moves", "when you make the card", "when they claim the link"],
   ["If it's never claimed", "the money waits in the card", "it never leaves your treasury"],
+  ["Who can spend it", "anyone holding the card's link", "only your key, after a claim"],
   ["How many at once", "four cards per batch in Vizor", "up to 200 links per batch"],
   ["To receive", "a wallet that redeems gift cards", "any shielded address"],
 ];
@@ -32,7 +34,7 @@ const COMPARE = [
 function Ticker() {
   const items = [...TICKER, ...TICKER, ...TICKER, ...TICKER]; // two identical halves, so the drift loops seamlessly
   return (
-    <div className="mx-5 overflow-hidden rounded-[22px] border-[3px] border-ink bg-sun-soft py-4 sm:mx-8" aria-label="Shielded, no address lists, links expire, any wallet">
+    <div className="mx-5 overflow-hidden rounded-[22px] border-[3px] border-ink bg-sun-soft py-4 sm:mx-8" aria-label="Shielded, no address lists, your key signs, links expire, any wallet">
       <div className="drift flex w-max items-center" aria-hidden>
         {items.map(([Icon, label], i) => (
           <span key={i} className="flex items-center gap-3 px-8 text-xl font-black uppercase tracking-wide">
@@ -73,7 +75,7 @@ export function Home() {
         <div className="relative z-10">
           <h1 className="sticker text-balance text-[clamp(3.5rem,10vw,7.4rem)] leading-[0.92]">Pay anyone with a link.</h1>
           <p className="mt-7 max-w-xl text-pretty text-[clamp(1.25rem,2.4vw,1.6rem)] font-bold leading-[1.45]">
-            Your ZEC stays in your treasury until they claim it, then arrives shielded. No addresses to collect.
+            Your ZEC stays in your treasury until they claim it and your key signs, then arrives shielded. No addresses to collect.
           </p>
           <div className="mt-9 flex flex-wrap gap-4">
             {sample && (
@@ -103,7 +105,7 @@ export function Home() {
 
       <section id="how" className="mx-auto max-w-7xl scroll-mt-6 px-5 py-20 sm:px-8">
         <h2 className="sticker text-balance text-[clamp(2.6rem,6vw,4.2rem)] leading-none">How it works</h2>
-        <ol className="mt-10 grid gap-10 md:grid-cols-3">
+        <ol className="mt-10 grid gap-10 md:grid-cols-2 lg:grid-cols-4">
           {STEPS.map(([title, body], i) => (
             <li key={title}>
               <span className="sticker text-[4.6rem] leading-none">{i + 1}</span>
